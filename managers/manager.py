@@ -19,15 +19,15 @@ class Manager():
                     print('Found better model')
                     best_res = res
                     save_dict = {'epoch':epoch}
-                    learners[0].save_model(self.save_path+'_best.pth', save_dict)
+                    learners[0].save_model(self.save_path+'best.pth', save_dict)
             if epoch%save_epoch==0:
                 save_dict = {'epoch':epoch}
-                learners[0].save_model(self.save_path+'.pth', save_dict)
+                learners[0].save_model(self.save_path+'check.pth', save_dict)
             #get results
             #save model
 
     def eval(self, learner, trainer, evaluator, device=None):
-        print('Eval:')
+        print('Eval ' + learner.name+ ':')
         metrics = trainer.eval_epoch(learner, evaluator,  device=device)
         return metrics
 

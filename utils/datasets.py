@@ -15,8 +15,9 @@ class DatasetWithCollate(Dataset):
     def get_collate_fn(self):
         raise NotImplementedError
 
-class SingleGraphDataset(Dataset):
+class SingleGraphDataset(DatasetWithCollate):
     def __init__(self, graph):
+        super().__init__()
         self.num_nodes = graph.num_nodes()
         
         self.graph = graph
