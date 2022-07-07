@@ -10,17 +10,17 @@ class Trainer():
         self.params = params
 
     def full_epoch(self, learners, evaluator, device=None):
-        train_metric = self.train_scheduled(learners, evaluator, device)
-        eval_metric = self.eval_scheduled(learners, evaluator, device)
+        train_metric = self.train_scheduled(learners[0], evaluator, device)
+        eval_metric = self.eval_scheduled(learners[1], evaluator, device)
         return eval_metric
 
-    def train_scheduled(self, learners, evaluator, device=None):
-        train_metric = self.train_epoch(learners[0], learners[0].optimizer, evaluator, device=device)
+    def train_scheduled(self, learner, evaluator, device=None):
+        train_metric = self.train_epoch(learner, learner.optimizer, evaluator, device=device)
         print(train_metric)
         return train_metric
     
-    def eval_scheduled(self, learners, evaluator, device=None):
-        eval_metric = self.eval_epoch(learners[1][0], evaluator, device=device)
+    def eval_scheduled(self, learner, evaluator, device=None):
+        eval_metric = self.eval_epoch(learner, evaluator, device=device)
         print(eval_metric)
         return eval_metric
 
@@ -55,6 +55,7 @@ class Trainer():
         return metrics
     
     def eval_epoch(self, learner, evaluator, device=None):
+        print('Eval ' + learner.name+ ':')
         dataloader = learner.create_dataloader(learner.batch_size, num_workers=self.params.num_workers, shuffle=False)
         pbar = tqdm(dataloader)
         with torch.no_grad():
@@ -95,10 +96,10 @@ class FilteredTrainer(Trainer):
     def __init__(self, params):
         super().__init__( params)
 
-    def eval_scheduled(self, learners, device=None):
-        eval_metric1 = self.eval_epoch(learners[1][0], device=device)
+    def eval_scheduled(self, learners, evaluator, device=None):
+        eval_metric1 = self.eval_epoch(learners[0], evaluator, device=device)
         print(eval_metric1)
-        eval_metric2 = self.eval_epoch(learners[1][1], device=device)
+        eval_metric2 = self.eval_epoch(learners[1], evaluator, device=device)
         print(eval_metric2)
         eval_metric = {}
         for k in eval_metric1:

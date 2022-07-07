@@ -11,9 +11,9 @@ class Manager():
         for epoch in range(self.starting_epoch+1, self.starting_epoch+num_epochs+1):
             print('Epoch', epoch)
             # metrics = trainer.full_epoch(self.learner, device=device)
-            train_metric = trainer.train_scheduled(learners, evaluator,device)
+            train_metric = trainer.train_scheduled(learners[0], evaluator,device)
             if epoch%eval_every==0:
-                metrics = trainer.eval_scheduled(learners, evaluator, device)
+                metrics = trainer.eval_scheduled(learners[1], evaluator, device)
                 update, res = trainer.eval_metric(metrics, metric_name, best_res)
                 if update:
                     print('Found better model')
@@ -27,7 +27,8 @@ class Manager():
             #save model
 
     def eval(self, learner, trainer, evaluator, device=None):
-        print('Eval ' + learner.name+ ':')
-        metrics = trainer.eval_epoch(learner, evaluator,  device=device)
+        metrics = trainer.eval_scheduled(learner, evaluator, device=device)
         return metrics
 
+    def load_model(self, learner):
+        learner.load_model(self.save_path+'best.pth')

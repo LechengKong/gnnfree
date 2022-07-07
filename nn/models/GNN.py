@@ -66,6 +66,12 @@ class HomogeneousGraphModel(nn.Module):
 
         self.timer = SmartTimer(False)
 
+    def reset_parameters(self):
+        for layer in self.conv:
+            layer.reset_parameters()
+        for layer in self.batch_norm:
+            layer.reset_parameters()
+
     def forward(self, g):
         h = g.ndata['feat']
         h_list = [h]

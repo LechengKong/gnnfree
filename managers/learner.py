@@ -6,7 +6,8 @@ class Learner():
     def __init__(self, name, data, model, loss, optimizer, batch_size):
         self.name = name
         self.optimizer_type = optimizer
-        self.collate_func = data.get_collate_fn()
+        if data is not None:
+            self.collate_func = data.get_collate_fn()
         self.data = data
         self.model = model
         self.loss = loss
@@ -54,6 +55,10 @@ class Learner():
 
     def num_model_params(self):
         pass
+
+    def update_data(self, data):
+        self.data = data
+        self.collate_func = data.get_collate_fn()
 
 class SingleModelLearner(Learner):
     def setup_optimizer(self, optimizer_groups):

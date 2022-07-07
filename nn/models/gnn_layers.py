@@ -35,6 +35,10 @@ class GINLayer(nn.Module):
         self.mlp = MLPLayers(2, [in_feats, 2*in_feats, out_feats])
         self.eps = torch.nn.Parameter(torch.Tensor([0]))
 
+    def reset_parameters(self):
+        self.mlp.reset_parameters()
+        self.eps = torch.nn.Parameter(torch.Tensor([0]))
+
     def forward(self, g, feature):
         with g.local_scope():
             g.ndata['h'] = feature

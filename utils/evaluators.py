@@ -1,5 +1,7 @@
 import numpy as np
 import torch
+import multiprocessing as mp
+from gnnfree.utils.utils import get_rank
 from sklearn import metrics as met
 
 class Evaluator():
@@ -38,6 +40,39 @@ class HeadPosRankingEvaluator(Evaluator):
 
     def reset(self):
         self.rankings = []
+
+class VarSizeRankingEvaluator(Evaluator):
+    def __init__(self, name, num_workers=20) -> None:
+        super().__init__(name)
+        self.score_list = []
+        self.num_workers = num_workers
+
+    def collect_res(self, res, batch):
+        sample_len = batch.bsize
+        sample_len = sample_len.cpu().numpy()
+        score = res.cpu().numpy().flatten()
+        cur_head_pointer = 0
+        for sl in sample_len:
+            next_hp = cur_head_pointer+sl
+            s_score = score[cur_head_pointer:next_hp]
+            cur_head_pointer = next_hp
+            self.score_list.append(s_score)
+
+    def summarize_res(self):
+        metrics = {}
+        with mp.Pool(processes=20) as p:
+            all_rankings = p.map(get_rank, self.score_list)
+        rankings = np.array(all_rankings)
+        metrics['h1000'] = np.mean(rankings<=1000)
+        metrics['h100'] = np.mean(rankings<=100)
+        metrics['h10'] = np.mean(rankings<=10)
+        metrics['h3'] = np.mean(rankings<=3)
+        metrics['h1'] = np.mean(rankings==1)
+        metrics['mrr'] = np.mean(1/rankings)
+        return metrics
+
+    def reset(self):
+        self.score_list = []
 
 class BinaryHNEvaluator(Evaluator):
     def __init__(self, name, hn=None) -> None:

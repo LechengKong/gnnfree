@@ -2,6 +2,8 @@ import networkx as nx
 
 from torch.utils.data import Dataset
 
+from gnnfree.utils.graph import dgl_graph_to_gt_graph
+
 class DatasetWithCollate(Dataset):
     def __init__(self) -> None:
         super().__init__()
@@ -22,4 +24,5 @@ class SingleGraphDataset(DatasetWithCollate):
         
         self.graph = graph
         self.adj_mat = self.graph.adjacency_matrix(transpose=False, scipy_fmt='csr')
-        self.nx_graph = nx.from_scipy_sparse_matrix(self.adj_mat)
+        # self.nx_graph = nx.from_scipy_sparse_matrix(self.adj_mat)
+        self.gt_g = dgl_graph_to_gt_graph(self.graph)

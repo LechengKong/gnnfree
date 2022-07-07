@@ -1,3 +1,4 @@
+from turtle import forward
 import torch
 
 class BinaryLoss(torch.nn.Module):
@@ -21,7 +22,7 @@ class MultiClassLoss(torch.nn.Module):
         self.loss = torch.nn.CrossEntropyLoss()
 
     def forward(self, scores, labels):
-        loss = self.loss(scores, labels)
+        loss = self.loss(scores, labels.to(torch.long))
         return loss
 
 class InfoNCEloss(torch.nn.Module):
@@ -135,3 +136,14 @@ class MSELoss(torch.nn.Module):
     
     def forward(self, pred, target):
         return self.loss(pred, target)
+
+class NegLogLoss(torch.nn.Module):
+    def __init__(self, num_neg_samples) -> None:
+        super().__init__()
+        self.neg_sample = num_neg_samples
+    
+    def forward(self, res):
+        score_mat = res.view(-1, self.neg_sample+1)
+        score_mat = torch.sigmoid(score_mat)
+        loss = torch.mean(-torch.log(score_mat[:,0])-(torch.log(1-score_mat[:,1:])).mean(dim=-1))
+        return loss
