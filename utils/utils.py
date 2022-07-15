@@ -101,10 +101,37 @@ def cv_with_valid(data, labels, data_cons_func, model, fold, epochs, train_learn
 
     return val_res_dict, test_res_dict
 
+def cv_with_valid_agnostic(data, labels, data_cons_func, fold, train_one_fold):
+    val_res_col = []
+    test_res_col = []
+    folds = k_fold_ind(labels, fold)
+    for i in range(fold):
+        test_arr = np.zeros(len(labels), dtype=bool)
+        test_arr[folds[i]]=1
+        val_arr = np.zeros(len(labels), dtype=bool)
+        val_arr[folds[int((i+1)%fold)]]=1
+        train_arr = np.logical_not(np.logical_or(test_arr, val_arr))
+        train_ind = train_arr.nonzero()[0]
+        test_ind = test_arr.nonzero()[0]
+        val_ind = val_arr.nonzero()[0]
+        train = data_cons_func(data, labels, train_ind)
+        test = data_cons_func(data, labels, test_ind)
+        val = data_cons_func(data, labels, val_ind)
+
+        val_res, test_res = train_one_fold(train, test, val)
+
+        val_res_col.append(val_res)
+        test_res_col.append(test_res)
+
+    val_res_dict = dict_res_summary(val_res_col)
+    test_res_dict = dict_res_summary(test_res_col)
+
+    return val_res_dict, test_res_dict
+
 def k_fold_ind(labels, fold):
     ksfold = StratifiedKFold(n_splits=fold, shuffle=True, random_state=10)
     folds = []
-    for _, t_index in ksfold.split(np.zeros_like(np.array(labels)), np.array(labels)):
+    for _, t_index in ksfold.split(np.zeros_like(np.array(labels)), np.array(labels, dtype=int)):
         folds.append(t_index)
     return folds
 

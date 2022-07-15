@@ -12,7 +12,7 @@ class Manager():
             print('Epoch', epoch)
             # metrics = trainer.full_epoch(self.learner, device=device)
             train_metric = trainer.train_scheduled(learners[0], evaluator,device)
-            if epoch%eval_every==0:
+            if epoch%eval_every==0 or epoch==self.starting_epoch+num_epochs:
                 metrics = trainer.eval_scheduled(learners[1], evaluator, device)
                 update, res = trainer.eval_metric(metrics, metric_name, best_res)
                 if update:
