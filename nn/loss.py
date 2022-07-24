@@ -2,9 +2,9 @@ from turtle import forward
 import torch
 
 class BinaryLoss(torch.nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, weight=None) -> None:
         super().__init__()
-        self.loss = torch.nn.BCEWithLogitsLoss()
+        self.loss = torch.nn.BCEWithLogitsLoss(pos_weight=weight)
 
     def forward(self, scores, labels):
         if labels.dim()<=1:
@@ -47,8 +47,8 @@ class CCALoss(torch.nn.Module):
         It is the loss function of CCA as introduced in the original paper. There can be other formulations.
         """
 
-        r1 = 1e-4
-        r2 = 1e-4
+        r1 = 1e-5
+        r2 = 1e-5
         eps = 1e-7
 
         H1, H2 = H1.t(), H2.t()
@@ -80,10 +80,11 @@ class CCALoss(torch.nn.Module):
         # Calculating the root inverse of covariance matrices by using eigen decomposition
         [D1, V1] = torch.linalg.eigh(SigmaHat11)
         [D2, V2] = torch.linalg.eigh(SigmaHat22)
-        # v,c = torch.unique(D1, return_counts=True)
-        # print(v[c>1])
-        # v,c = torch.unique(D2, return_counts=True)
-        # print(v[c>1])
+        v1,c1 = torch.unique(D1, return_counts=True)
+        v2,c2 = torch.unique(D2, return_counts=True)
+        if len(v1[c1>1])>0 or len(v2[c2>1])>0:
+            print('sht')
+            return torch.tensor(0, requires_grad=True, dtype=torch.float), torch.eye(o1), torch.eye(o1)
         assert torch.isnan(D1).sum().item() == 0
         assert torch.isnan(D2).sum().item() == 0
         assert torch.isnan(V1).sum().item() == 0
@@ -121,6 +122,7 @@ class CCALoss(torch.nn.Module):
         U = torch.matmul(SigmaHat11RootInv, U)
         V = torch.matmul(SigmaHat22RootInv, V)
         return corr, U, V
+
 
 class IDLoss(torch.nn.Module):
     def __init__(self) -> None:

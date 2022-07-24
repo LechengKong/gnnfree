@@ -84,6 +84,7 @@ class BinaryHNEvaluator(Evaluator):
     def collect_res(self, res, batch):
         labels = batch.labels
         is_labeled = torch.logical_not(torch.isnan(labels))
+        # print(labels.sum())
         self.scores.append(res[is_labeled].cpu().numpy().flatten())
         self.targets.append(labels[is_labeled].cpu().numpy())
         
