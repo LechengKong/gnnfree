@@ -56,7 +56,7 @@ class Trainer():
     
     def eval_epoch(self, learner, evaluator, device=None):
         print('Eval ' + learner.name+ ':')
-        dataloader = learner.create_dataloader(learner.batch_size, num_workers=self.params.num_workers, shuffle=False)
+        dataloader = learner.create_dataloader(learner.batch_size, num_workers=self.params.num_workers, shuffle=False, drop_last=False)
         pbar = tqdm(dataloader)
         with torch.no_grad():
             learner.eval()

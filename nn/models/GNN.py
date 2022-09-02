@@ -53,6 +53,8 @@ class HomogeneousGraphModel(nn.Module):
         self.drop_ratio = 0
         self.JK = JK
 
+        self.drop_ratio = drop_ratio
+
         self.conv = torch.nn.ModuleList()
 
         self.batch_norm = torch.nn.ModuleList()
@@ -77,10 +79,13 @@ class HomogeneousGraphModel(nn.Module):
         h_list = [h]
 
         for layer in range(self.num_layers):
+            # print(layer, h)
             h = self.conv[layer](g, h_list[layer])
             h = self.batch_norm[layer](h)
             if layer != self.num_layers -1:
-                h = F.relu(h)
+                h = F.dropout(F.relu(h), p=self.drop_ratio,training=self.training)
+            else:
+                h = F.dropout(h, p=self.drop_ratio, training=self.training)
             h_list.append(h)
         
         if self.JK == 'last':

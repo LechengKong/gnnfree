@@ -10,6 +10,9 @@ def construct_graph_from_edges(ori_head, ori_tail, n_entities, inverse_edge=Fals
     if inverse_edge:
         head = np.concatenate([ori_head, ori_tail])
         tail = np.concatenate([ori_tail, ori_head])
+    else:
+        head = ori_head
+        tail = ori_tail
     g = dgl.graph((head, tail), num_nodes=n_entities)
     g.edata['src_node'] = torch.tensor(head, dtype=torch.long)
     g.edata['dst_node'] = torch.tensor(tail, dtype=torch.long)
