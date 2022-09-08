@@ -5,27 +5,29 @@ from tqdm import tqdm
 from gnnfree.utils.utils import SmartTimer
 
 class Trainer():
-    def __init__(self, params):
+    def __init__(self, evaluator, prepare_eval, num_workers=4):
         self.timer = SmartTimer(False)
-        self.params = params
+        self.evaluator = evaluator
+        self.prepare_eval = prepare_eval
+        self.num_workers = num_workers
 
-    def full_epoch(self, learners, evaluator, device=None):
-        train_metric = self.train_scheduled(learners[0], evaluator, device)
-        eval_metric = self.eval_scheduled(learners[1], evaluator, device)
+    def full_epoch(self, learners, device=None):
+        train_metric = self.train_scheduled(learners[0], device)
+        eval_metric = self.eval_scheduled(learners[1], device)
         return eval_metric
 
-    def train_scheduled(self, learner, evaluator, device=None):
-        train_metric = self.train_epoch(learner, learner.optimizer, evaluator, device=device)
+    def train_scheduled(self, learner, optimizer, device=None):
+        train_metric = self.train_epoch(learner, optimizer, device=device)
         print(train_metric)
         return train_metric
     
-    def eval_scheduled(self, learner, evaluator, device=None):
-        eval_metric = self.eval_epoch(learner, evaluator, device=device)
+    def eval_scheduled(self, learner, device=None):
+        eval_metric = self.eval_epoch(learner, device=device)
         print(eval_metric)
         return eval_metric
 
-    def train_epoch(self, learner, optimizer, evaluator, device=None):
-        dataloader = learner.create_dataloader(learner.batch_size, num_workers=self.params.num_workers)
+    def train_epoch(self, learner, optimizer, device=None):
+        dataloader = learner.create_dataloader(learner.batch_size, num_workers=self.num_workers)
         pbar = tqdm(dataloader)
         learner.train()
         learner.preprocess(device=device)
@@ -45,18 +47,19 @@ class Trainer():
             optimizer.step()
             self.timer.cal_and_update('back')
             with torch.no_grad():
-                evaluator.collect_res(res, data)
+                eval_data = self.prepare_eval(res, data)
+                self.evaluator.collect_res(*eval_data)
                 t_loss.append(loss.item())
             self.timer.cal_and_update('score')
-        metrics = evaluator.summarize_res()
+        metrics = self.evaluator.summarize_res()
         metrics['loss'] = np.array(t_loss).mean()
         learner.postprocess()
-        evaluator.reset()
+        self.evaluator.reset()
         return metrics
     
-    def eval_epoch(self, learner, evaluator, device=None):
+    def eval_epoch(self, learner, device=None):
         print('Eval ' + learner.name+ ':')
-        dataloader = learner.create_dataloader(learner.batch_size, num_workers=self.params.num_workers, shuffle=False, drop_last=False)
+        dataloader = learner.create_dataloader(learner.batch_size, num_workers=self.num_workers, shuffle=False, drop_last=False)
         pbar = tqdm(dataloader)
         with torch.no_grad():
             learner.eval()
@@ -69,33 +72,21 @@ class Trainer():
                 res = learner.forward_func(data)
                 # self.timer.cal_and_update('forward')
                 # loss = learner.loss_func(res, data)
-                evaluator.collect_res(res, data)
+                eval_data = self.prepare_eval(res, data)
+                self.evaluator.collect_res(*eval_data)
                 self.timer.cal_and_update('loss')
-        metrics = evaluator.summarize_res()
+        metrics = self.evaluator.summarize_res()
         learner.postprocess()
-        evaluator.reset()
+        self.evaluator.reset()
         return metrics
 
-    def eval_metric(self, metrics, metric_name, presult):
-        return metrics[metric_name]<=presult, metrics[metric_name]
+    def eval_metric(self, new_res, pre_res):
+        return self.evaluator.better_results(new_res, pre_res)
 
     def init_metric(self):
-        return 1000000
-
-class MaxTrainer(Trainer):
-    def __init__(self, params):
-        super().__init__(params)
-    
-    def init_metric(self):
-        return 0
-
-    def eval_metric(self, metrics, metric_name, presult):
-        return metrics[metric_name]>=presult, metrics[metric_name]
+        return self.evaluator.init_result()
 
 class FilteredTrainer(Trainer):
-    def __init__(self, params):
-        super().__init__( params)
-
     def eval_scheduled(self, learners, evaluator, device=None):
         eval_metric1 = self.eval_epoch(learners[0], evaluator, device=device)
         print(eval_metric1)
@@ -106,7 +97,3 @@ class FilteredTrainer(Trainer):
             eval_metric[k] = (eval_metric1[k] + eval_metric2[k])/2
         print(eval_metric)
         return eval_metric
-
-class FilteredMaxTrainer(FilteredTrainer, MaxTrainer):
-    def __init__(self, params):
-        super().__init__(params)

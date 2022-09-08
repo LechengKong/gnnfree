@@ -1,20 +1,25 @@
 import torch
 
 from torch.utils.data import DataLoader, RandomSampler
+from torch.optim import Adam
+
+from gnnfree.utils.datasets import DatasetWithCollate
 
 class Learner():
-    def __init__(self, name, data, model, loss, optimizer, batch_size):
+    def __init__(self, name, data, model, loss, optimizer, batch_size, optimizer_type=Adam):
         self.name = name
-        self.optimizer_type = optimizer
-        if data is not None:
+        if isinstance(data, DatasetWithCollate):
             self.collate_func = data.get_collate_fn()
+        else:
+            self.collate_func = None
+        self.optimizer_type = optimizer_type
         self.data = data
         self.model = model
         self.loss = loss
         self.batch_size = batch_size
 
         self.current_dataloader = None
-        self.optimizer = None
+        self.optimizer = optimizer
 
     def create_dataloader(self, batch_size, num_workers=4, sample_size=None, shuffle=True, drop_last=True):
         if sample_size is None:

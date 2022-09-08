@@ -8,7 +8,7 @@ class Evaluator():
     def __init__(self, name) -> None:
         self.name = name
 
-    def collect_res(self, res, batch):
+    def collect_res(self, res):
         pass
 
     def summarize_res(self):
@@ -17,13 +17,33 @@ class Evaluator():
     def reset(self):
         pass
 
-class HeadPosRankingEvaluator(Evaluator):
+    def better_results(self,a, b):
+        pass
+
+    def init_result(self,):
+        pass
+
+class MaxEvaluator(Evaluator):
+    def better_results(self, a, b):
+        return a>b, max(a, b)
+    
+    def init_result(self):
+        return -1e10
+
+class MinEvaluator(Evaluator):
+    def better_results(self, a, b):
+        return a<b, min(a, b)
+
+    def init_result(self):
+        return 1e10
+
+class HeadPosRankingEvaluator(MaxEvaluator):
     def __init__(self, name, neg_sample_size) -> None:
         super().__init__(name)
         self.rankings = []
         self.neg_sample_size = neg_sample_size
 
-    def collect_res(self, res, batch):
+    def collect_res(self, res):
         score_mat = res.view(-1, self.neg_sample_size+1).cpu().numpy()
         score_sort = np.argsort(score_mat, axis=1)
         rankings = len(score_mat[0])-np.where(score_sort==0)[1]
@@ -41,14 +61,13 @@ class HeadPosRankingEvaluator(Evaluator):
     def reset(self):
         self.rankings = []
 
-class VarSizeRankingEvaluator(Evaluator):
+class VarSizeRankingEvaluator(MaxEvaluator):
     def __init__(self, name, num_workers=20) -> None:
         super().__init__(name)
         self.score_list = []
         self.num_workers = num_workers
 
-    def collect_res(self, res, batch):
-        sample_len = batch.bsize
+    def collect_res(self, res, sample_len):
         sample_len = sample_len.cpu().numpy()
         score = res.cpu().numpy().flatten()
         cur_head_pointer = 0
@@ -74,15 +93,14 @@ class VarSizeRankingEvaluator(Evaluator):
     def reset(self):
         self.score_list = []
 
-class BinaryHNEvaluator(Evaluator):
+class BinaryHNEvaluator(MaxEvaluator):
     def __init__(self, name, hn=None) -> None:
         super().__init__(name)
         self.targets = []
         self.scores = []
         self.hn = hn
 
-    def collect_res(self, res, batch):
-        labels = batch.labels
+    def collect_res(self, res, labels):
         is_labeled = torch.logical_not(torch.isnan(labels))
         # print(labels.sum())
         self.scores.append(res[is_labeled].cpu().numpy().flatten())
@@ -108,14 +126,13 @@ class BinaryHNEvaluator(Evaluator):
         self.targets = []
         self.scores = []
 
-class BinaryAccEvaluator(Evaluator):
+class BinaryAccEvaluator(MaxEvaluator):
     def __init__(self, name) -> None:
         super().__init__(name)
         self.targets = []
         self.scores = []
 
-    def collect_res(self, res, batch):
-        labels = batch.labels
+    def collect_res(self, res, labels):
         self.scores.append(res.cpu().numpy())
         self.targets.append(labels.cpu().numpy())
         
@@ -131,12 +148,12 @@ class BinaryAccEvaluator(Evaluator):
         self.targets = []
         self.scores = []
 
-class InfoNEEvaluator(Evaluator):
+class InfoNEEvaluator(MinEvaluator):
     def __init__(self, name) -> None:
         super().__init__(name)
         self.loss = []
 
-    def collect_res(self, res, batch):
+    def collect_res(self, res):
         n = len(res)
         e_neg_mat = res.view(-1)[1:].view(n-1,n+1)[:,:-1].reshape(n,n-1)
         e_pos = torch.diagonal(res)
@@ -151,12 +168,12 @@ class InfoNEEvaluator(Evaluator):
     def reset(self):
         self.loss = []
 
-class LossEvaluator(Evaluator):
+class LossEvaluator(MinEvaluator):
     def __init__(self, name) -> None:
         super().__init__(name)
         self.loss = []
     
-    def collect_res(self, res, batch):
+    def collect_res(self, res):
         self.loss.append(res.item())
 
     def summarize_res(self):
@@ -173,7 +190,7 @@ class CollectionEvaluator(Evaluator):
         super().__init__(name)
         self.out_val = []
     
-    def collect_res(self, res, batch):
+    def collect_res(self, res):
         self.out_val.append(res)
 
     def summarize_res(self):
@@ -185,15 +202,15 @@ class CollectionEvaluator(Evaluator):
     def reset(self):
         self.out_val = []
 
-class MSEEvaluator(Evaluator):
+class MSEEvaluator(MinEvaluator):
     def __init__(self, name) -> None:
         super().__init__(name)
         self.pred = []
         self.labels = []
     
-    def collect_res(self, res, batch):
+    def collect_res(self, res, labels):
         self.pred.append(res.cpu().numpy())
-        self.labels.append(batch.labels.cpu().numpy())
+        self.labels.append(labels.cpu().numpy())
     
     def summarize_res(self):
         metrics = {}

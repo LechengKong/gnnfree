@@ -92,16 +92,6 @@ def read_homogeneous_graph(path, is_text=False):
     adj_list_ind = adj_list
     return adj_list, converted_triplets, relation2id
 
-
-    # for row in data:
-    #     if row[0] not in entity2id:
-    #         entity2id[row[0]] = ent
-    #         ent += 1
-    #     if row[1] not in entity2id:
-    #         entity2id[row[1]] = ent
-    #         ent += 1
-    #     edges.append([entity2id[row[0]], entity2id[row[1]]])
-
 def save_load_torch_data(folder_path, data, num_output=1, data_fold=5, data_name='saved_gd_data'):
     saved_data_path = osp.join(folder_path, data_name)
     if not osp.exists(saved_data_path):

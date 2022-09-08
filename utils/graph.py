@@ -46,3 +46,103 @@ def add_gt_graph_edge(gt_graph, s, t):
     if gt_graph.is_directed():
         gt_graph.add_edge(t,s)
 
+def generate_random_cycle_plus_graph(cycle_length, aug_nodes=3, sample_size=10, gen_p=0.2):
+    head = np.arange(cycle_length)
+    tail = np.arange(1,cycle_length+1)
+    chain_edges = np.stack([head,tail]).T
+    cycle_edges = np.concatenate([chain_edges,np.array([[cycle_length,0]])])
+    num_nodes = cycle_length+1+aug_nodes
+    aug_nodes_ind = np.arange(cycle_length+1, num_nodes)
+
+    cycle_graphs = []
+    chain_graphs = []
+
+    for i in range(sample_size):
+        aug_edge = []
+        for j in aug_nodes_ind:
+            p = np.random.binomial(1, p=np.zeros(num_nodes)+gen_p).nonzero()[0]
+            for k in p:
+                aug_edge.append([j, k])
+        extra = np.random.permutation(num_nodes)[:2].reshape(1,2)
+        edges = np.array(aug_edge)
+        if len(edges)!=0:
+            cycle_graphs.append(np.concatenate([cycle_edges, edges]))
+            chain_graphs.append(np.concatenate([chain_edges, edges, extra]))
+
+    data = []
+    for g in cycle_graphs:
+        cg = construct_graph_from_edges(g[:,0],g[:,1],n_entities=num_nodes,inverse_edge=True)
+        data.append([cg,1])
+    for g in chain_graphs:
+        cg = construct_graph_from_edges(g[:,0],g[:,1],n_entities=num_nodes,inverse_edge=True)
+        data.append([cg,0])
+    return data
+
+def generate_random_grid_graph(cycle_length, aug_nodes=3, sample_size=10, gen_p=0.2):
+    a_edges = [[0,1],[0,2],[1,3],[2,3],[2,4],[3,5],[4,5]]
+    b_edges = [[0,1],[0,2],[1,2],[2,3],[3,4],[3,5],[4,5]]
+    chain_edges = np.array(a_edges)
+    cycle_edges = np.array(b_edges)
+    num_nodes = 6+aug_nodes
+    aug_nodes_ind = np.arange(6, num_nodes)
+
+    cycle_graphs = []
+    chain_graphs = []
+
+    for i in range(sample_size):
+        aug_edge = []
+        for j in aug_nodes_ind:
+            p = np.random.binomial(1, p=np.zeros(num_nodes)+gen_p).nonzero()[0]
+            for k in p:
+                aug_edge.append([j, k])
+        edges = np.array(aug_edge)
+        if len(edges)!=0:
+            cycle_graphs.append(np.concatenate([cycle_edges, edges]))
+            chain_graphs.append(np.concatenate([chain_edges, edges]))
+
+    data = []
+    for g in cycle_graphs:
+        cg = construct_graph_from_edges(g[:,0],g[:,1],n_entities=num_nodes,inverse_edge=True)
+        data.append([cg,1])
+    for g in chain_graphs:
+        cg = construct_graph_from_edges(g[:,0],g[:,1],n_entities=num_nodes,inverse_edge=True)
+        data.append([cg,0])
+    return data
+
+def generate_randomvv_grid_graph(cycle_length, aug_nodes=3, sample_size=10, gen_p=0.2):
+    a_edges = [[0,1],[0,2],[1,3],[2,3],[2,4],[3,5],[4,5]]
+    b_edges = [[0,1],[0,2],[1,2],[2,3],[3,4],[3,5],[4,5]]
+    chain_edges = np.array(a_edges)
+    cycle_edges = np.array(b_edges)
+    num_nodes = 6+aug_nodes
+    aug_nodes_ind = np.arange(6, num_nodes)
+
+    cycle_graphs = []
+    chain_graphs = []
+
+    for i in range(sample_size):
+        aug_edge = []
+        for j in aug_nodes_ind:
+            p = np.random.binomial(1, p=np.zeros(num_nodes)+gen_p).nonzero()[0]
+            for k in p:
+                aug_edge.append([j, k])
+        edges = np.array(aug_edge)
+        if len(edges)!=0:
+            cycle_graphs.append(np.concatenate([cycle_edges, edges]))
+        aug_edge = []
+        for j in aug_nodes_ind:
+            p = np.random.binomial(1, p=np.zeros(num_nodes)+gen_p).nonzero()[0]
+            for k in p:
+                aug_edge.append([j, k])
+        edges = np.array(aug_edge)
+        if len(edges)!=0:
+            chain_graphs.append(np.concatenate([chain_edges, edges]))
+
+    data = []
+    for g in cycle_graphs:
+        cg = construct_graph_from_edges(g[:,0],g[:,1],n_entities=num_nodes,inverse_edge=True)
+        data.append([cg,1])
+    for g in chain_graphs:
+        cg = construct_graph_from_edges(g[:,0],g[:,1],n_entities=num_nodes,inverse_edge=True)
+        data.append([cg,0])
+    return data
