@@ -10,7 +10,6 @@ class BinaryLoss(torch.nn.Module):
         if labels.dim()<=1:
             labels = labels.unsqueeze(1)
         is_labeled = torch.logical_not(torch.isnan(labels))
-        loss = 0
         target_res = scores[is_labeled]
         target_label = labels[is_labeled].to(torch.float)
         loss = self.loss(target_res, target_label)
@@ -148,4 +147,30 @@ class NegLogLoss(torch.nn.Module):
         score_mat = res.view(-1, self.neg_sample+1)
         score_mat = torch.sigmoid(score_mat)
         loss = torch.mean(-torch.log(score_mat[:,0])-(torch.log(1-score_mat[:,1:])).mean(dim=-1))
+        return loss
+
+class FirstPosNegLoss(torch.nn.Module):
+    def __init__(self, num_neg_samples) -> None:
+        super().__init__()
+        self.neg_sample = num_neg_samples
+        self.loss = torch.nn.BCEWithLogitsLoss()
+    
+    def forward(self, res):
+        score_mat = res.view(-1, self.neg_sample+1)
+        target = torch.zeros_like(score_mat)
+        target[:,0]=1
+        loss = self.loss(score_mat.flatten(), target.flatten())
+        return loss
+
+class MRRLoss(torch.nn.Module):
+    def __init__(self, num_neg_samples) -> None:
+        super().__init__()
+        self.loss = torch.nn.MarginRankingLoss(15, reduction='sum')
+        self.num_neg_samples = num_neg_samples
+    
+    def forward(self, res):
+        scores_mat = res.view(-1, self.num_neg_samples+1)
+        score_pos = scores_mat[:, 0].unsqueeze(1).repeat_interleave(self.num_neg_samples, dim=-1)
+        score_neg = scores_mat[:, 1:]
+        loss = self.loss(score_pos, score_neg, torch.ones_like(score_pos).to(device=res.device))
         return loss

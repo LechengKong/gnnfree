@@ -218,6 +218,8 @@ def var_size_repeat(size, chunks, repeats):
     a = np.arange(size)
     s = np.r_[0,chunks.cumsum()]
     starts = a[np.repeat(s[:-1],repeats)]
+    if len(starts)==0:
+        return np.array([], dtype=int)
     l = np.repeat(chunks, repeats)
     ends = starts+l
 

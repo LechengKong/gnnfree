@@ -62,8 +62,11 @@ class LinkPredictor(nn.Module):
 
         self.use_only_embedding = False
 
-    def build_predictor(self):
+        self.build_predictor()
         self.link_mlp = MLPLayers(3, [self.link_dim, self.emb_dim, self.emb_dim, 1])
+
+    def build_predictor(self):
+        pass
 
     def embedding_only_mode(self, state=True):
         self.use_only_embedding = state
@@ -89,3 +92,43 @@ class LinkPredictor(nn.Module):
         output = self.link_mlp(g_rep)
 
         return output
+
+
+class NodeClassifier(nn.Module):
+    def __init__(self, num_classes, emb_dim, gnn, add_self_loop=False):
+        super().__init__()
+
+        self.gnn = gnn
+        self.add_self_loop = add_self_loop
+
+        self.timer = SmartTimer(False)
+
+        self.use_only_embedding = False
+
+        self.mlp_node = MLPLayers(1, h_units=[emb_dim, num_classes])
+
+    def reset_parameters(self):
+        self.gnn.reset_parameters()
+        self.mlp_graph.reset_parameters()
+
+    def embedding_only_mode(self, state=True):
+        self.use_only_embedding = state
+
+    def forward(self, g, node, input):
+        if self.use_only_embedding:
+            repr = g.ndata['repr']
+        else:
+            if self.add_self_loop:
+                g = dgl.add_self_loop(g)
+            repr = self.process_graph(g)
+
+        node_repr = self.pool_node(g, repr, node, input)
+
+        return self.mlp_node(node_repr)
+
+    def process_graph(self, g):
+        repr = self.gnn(g)
+        return repr
+
+    def pool_node(self, g, repr, node, input):
+        return repr[node]

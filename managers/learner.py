@@ -25,7 +25,7 @@ class Learner():
         if sample_size is None:
             self.current_dataloader = DataLoader(self.data, batch_size=batch_size, num_workers=num_workers, collate_fn=self.collate_func, shuffle=shuffle, pin_memory=True, drop_last=drop_last)
         else:
-            self.current_dataloader = DataLoader(self.data, batch_size=batch_size, num_workers=num_workers, collate_fn=self.collate_func, sampler=RandomSampler(self.data, num_samples=sample_size, replacement=True, drop_last=drop_last))
+            self.current_dataloader = DataLoader(self.data, batch_size=batch_size, num_workers=num_workers, collate_fn=self.collate_func, sampler=RandomSampler(self.data, num_samples=sample_size, replacement=True), drop_last=drop_last)
         return self.current_dataloader
 
     def preprocess(self, device=None):

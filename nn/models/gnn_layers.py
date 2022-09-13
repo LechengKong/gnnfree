@@ -20,10 +20,10 @@ def edge_mask_msg_func(edges):
 
 
 class GINELayer(nn.Module):
-    def __init__(self, in_feats, out_feats, edge_feats):
+    def __init__(self, in_feats, out_feats, edge_feats, batch_norm=True):
         super(GINELayer, self).__init__()
-        self.mlp = MLPLayers(2, [in_feats, 2*in_feats, out_feats])
-        self.edge_mlp = MLPLayers(2, [edge_feats, 2*edge_feats, in_feats])
+        self.mlp = MLPLayers(2, [in_feats, 2*in_feats, out_feats], batch_norm=batch_norm)
+        self.edge_mlp = MLPLayers(2, [edge_feats, 2*edge_feats, in_feats], batch_norm=batch_norm)
         self.eps = torch.nn.Parameter(torch.Tensor([0]))
 
     def forward(self, g, node_feat, edge_feat, mask=None):
@@ -44,9 +44,10 @@ def mask_msg_func(edges):
     return {'msg':msg}
 
 class GINLayer(nn.Module):
-    def __init__(self, in_feats, out_feats):
+    def __init__(self, in_feats, out_feats, batch_norm=True):
         super(GINLayer, self).__init__()
-        self.mlp = MLPLayers(2, [in_feats, 2*in_feats, out_feats])
+        self.mlp = MLPLayers(2, [in_feats, 2*in_feats, out_feats], batch_norm=batch_norm)
+        # self.mlp = torch.nn.Sequential(torch.nn.Linear(in_feats, 2*in_feats), torch.nn.BatchNorm1d(2*in_feats), torch.nn.ReLU(), torch.nn.Linear(2*in_feats, out_feats))
         self.eps = torch.nn.Parameter(torch.Tensor([0]))
 
     def reset_parameters(self):

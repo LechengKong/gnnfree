@@ -1,3 +1,4 @@
+from operator import is_
 import numpy as np
 import torch
 import multiprocessing as mp
@@ -79,7 +80,7 @@ class VarSizeRankingEvaluator(MaxEvaluator):
 
     def summarize_res(self):
         metrics = {}
-        with mp.Pool(processes=20) as p:
+        with mp.Pool(processes=self.num_workers) as p:
             all_rankings = p.map(get_rank, self.score_list)
         rankings = np.array(all_rankings)
         metrics['h1000'] = np.mean(rankings<=1000)
@@ -101,17 +102,25 @@ class BinaryHNEvaluator(MaxEvaluator):
         self.hn = hn
 
     def collect_res(self, res, labels):
-        is_labeled = torch.logical_not(torch.isnan(labels))
-        # print(labels.sum())
-        self.scores.append(res[is_labeled].cpu().numpy().flatten())
-        self.targets.append(labels[is_labeled].cpu().numpy())
+        self.scores.append(res.cpu().numpy())
+        self.targets.append(labels.cpu().numpy())
         
     def summarize_res(self):
         metrics = {}
         all_scores = np.concatenate(self.scores)
         all_targets = np.concatenate(self.targets)
-        metrics['auc'] = met.roc_auc_score(all_targets, all_scores)
-        metrics['apr'] = met.average_precision_score(all_targets, all_scores)
+        if len(all_targets.shape)<=1 or len(all_scores.shape)<=1:
+            all_scores = all_scores.reshape(len(all_scores),1)
+            all_targets = all_targets.reshape(len(all_targets),1)
+        ap_list = []
+        auc_list = []
+        is_labeled = np.logical_not(np.isnan(all_targets))
+        for i in range(all_scores.shape[1]):
+            if np.sum(all_targets[:,i]==1)>0 and np.sum(all_targets[:,i]==0)>0:
+                ap_list.append(met.average_precision_score(all_targets[is_labeled[:,i],i], all_scores[is_labeled[:,i],i]))
+                auc_list.append(met.roc_auc_score(all_targets[is_labeled[:,i],i], all_scores[is_labeled[:,i],i]))
+        metrics['auc'] = sum(auc_list)/len(auc_list)
+        metrics['apr'] = sum(ap_list)/len(ap_list)
         if self.hn is not None:
             sort_ind = np.argsort(all_scores)
             ranked_targets = all_targets[sort_ind[::-1]]
@@ -125,6 +134,36 @@ class BinaryHNEvaluator(MaxEvaluator):
     def reset(self):
         self.targets = []
         self.scores = []
+
+class HNEvaluator(MaxEvaluator):
+    def __init__(self, name, hn=50) -> None:
+        super().__init__(name)
+        self.targets = []
+        self.scores = []
+        self.hn = hn
+
+    def collect_res(self, res, labels):
+        self.scores.append(res.cpu().numpy())
+        self.targets.append(labels.cpu().numpy())
+        
+    def summarize_res(self):
+        metrics = {}
+        all_scores = np.concatenate(self.scores).flatten()
+        all_targets = np.concatenate(self.targets).flatten()
+        is_labeled = np.logical_not(np.isnan(all_targets))
+        all_scores = all_scores[is_labeled]
+        all_targets = all_targets[is_labeled]
+        metrics['apr'] = met.average_precision_score(all_targets, all_scores)
+        metrics['auc'] = met.roc_auc_score(all_targets, all_scores)
+        if self.hn is not None:
+            sort_ind = np.argsort(all_scores)
+            ranked_targets = all_targets[sort_ind[::-1]]
+            ranked_targets = np.logical_not(ranked_targets)
+            sumed_arr = np.cumsum(ranked_targets)
+            break_ind = np.where(sumed_arr==self.hn)[0][0]
+            hncount = break_ind-(self.hn-1)
+            metrics['h'+str(self.hn)] = hncount/np.sum(all_targets)
+        return metrics
 
 class BinaryAccEvaluator(MaxEvaluator):
     def __init__(self, name) -> None:

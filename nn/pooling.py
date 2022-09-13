@@ -18,14 +18,14 @@ class GDPool(Pooler):
         self.gd_deg = gd_deg
         self.emb_dim = emb_dim
         if gd_deg:
-            self.mlp_combine_gd_deg = MLPLayers(2, h_units=[emb_dim+1, 2*emb_dim, emb_dim])
+            self.mlp_combine_gd_deg = MLPLayers(2, h_units=[emb_dim+1, 2*emb_dim, emb_dim], batch_norm=False)
         self.mlp_combine_nei_gd = MLPLayers(2, h_units=[2*emb_dim+1, 4*emb_dim, emb_dim])
         self.mlp_combine_node_nei = MLPLayers(2, h_units=[2*emb_dim, 4*emb_dim, emb_dim])
 
     def get_out_dim(self):
         return self.emb_dim
 
-    def forward(self, repr, neighbors, neighbor_count, dist, gd, gd_count, gd_deg):
+    def forward(self, repr, nodes, neighbors, neighbor_count, dist, gd, gd_count, gd_deg):
 
         neighbors_repr = repr[neighbors]
         gd_repr = repr[gd]
@@ -38,7 +38,7 @@ class GDPool(Pooler):
         combined_repr = self.mlp_combine_nei_gd(torch.cat([combined_gd_repr, neighbors_repr, dist.view(-1,1)], dim=-1))
         combined_repr = scatter(combined_repr, torch.arange(len(neighbor_count), device=repr.device).repeat_interleave(neighbor_count), dim=0, dim_size=len(neighbor_count))
 
-        node_repr = self.mlp_combine_node_nei(torch.cat([combined_repr, repr], dim=-1))
+        node_repr = self.mlp_combine_node_nei(torch.cat([combined_repr, repr[nodes]], dim=-1))
         return node_repr
 
 
