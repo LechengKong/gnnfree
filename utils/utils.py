@@ -195,7 +195,7 @@ def hyperparameter_grid_search(hparams, data, exp, args, search_metric, evaluato
         val_metric_res, test_metric_res = np.array(val_res[search_metric]), np.array(test_res[search_metric])
         val_mean, val_std = np.mean(val_metric_res), np.std(val_metric_res)
         test_mean, test_std = np.mean(test_metric_res), np.std(test_metric_res)
-        if evaluator.better_results(val_mean, best_met):
+        if evaluator.better_results(val_mean, best_met)[0]:
             best_met = val_mean
             best_res = {'metric':search_metric, 'val_mean':val_mean, 'val_std':val_std, 'test_mean':test_mean, 'test_std':test_std, 'full_val': val_res, 'full_test':test_res, 'params': p}
     return best_res

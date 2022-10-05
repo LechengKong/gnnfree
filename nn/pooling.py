@@ -34,7 +34,6 @@ class GDPool(Pooler):
         else:
             combined_gd_repr = gd_repr
         combined_gd_repr = scatter(combined_gd_repr, torch.arange(len(gd_count), device=repr.device).repeat_interleave(gd_count), dim=0, dim_size=len(gd_count))
-
         combined_repr = self.mlp_combine_nei_gd(torch.cat([combined_gd_repr, neighbors_repr, dist.view(-1,1)], dim=-1))
         combined_repr = scatter(combined_repr, torch.arange(len(neighbor_count), device=repr.device).repeat_interleave(neighbor_count), dim=0, dim_size=len(neighbor_count))
 

@@ -5,6 +5,8 @@ import dgl
 
 from graph_tool.all import Graph, shortest_distance
 
+from gnnfree.utils.utils import SmartTimer
+
 def construct_graph_from_edges(ori_head, ori_tail, n_entities, inverse_edge=False, edge_type=None, num_rels=None):
     num_rels = 1
     if inverse_edge:
@@ -164,20 +166,45 @@ def sample_fixed_hop_size_neighbor(adj_mat, root, hop, max_nodes_per_hope=500):
         # dist_list+=[dist+1]*len(fringe)
     return nodes
 
-def sample_subgraph_around_link(adj, head, tail, max_dist, sample_size, max_nodes_per_hop):
-    neighbors = sample_fixed_hop_size_neighbor(adj, [head, tail], int(max_dist/2)+int(max_dist%2), max_nodes_per_hope=max_nodes_per_hop)
+def get_k_hop_neighbors(adj_mat, root, hop, block_node=None):
+    if block_node:
+        visited = np.array([root, block_node])
+    else:
+        visited = np.array([root])
+    fringe = np.array([root])
+    hop2neighbor = {}
+    hop2neighbor[0] = fringe
+    for h in range(1, hop+1):
+        u = adj_mat[fringe].nonzero()[1]
+        fringe = np.setdiff1d(u, visited)
+        visited = np.union1d(visited, fringe)
+        if len(fringe)==0:
+            break
+        hop2neighbor[h] = fringe
+        if block_node and h==1:
+            visited = np.setdiff1d(visited, np.array([block_node]))
 
+    return hop2neighbor
+
+def sample_subgraph_around_link(adj, head, tail, max_dist, sample_size, max_nodes_per_hop):
+    tmr=  SmartTimer(False)
+    tmr.record()
+    neighbors = sample_fixed_hop_size_neighbor(adj, [head, tail], int(max_dist/2)+int(max_dist%2), max_nodes_per_hope=max_nodes_per_hop)
+    tmr.cal_and_update('neighbor')
     if len(neighbors)>sample_size:
         neighbors = np.random.choice(neighbors, sample_size)
+        tmr.cal_and_update('sample')
     neighbors = np.concatenate([np.array([head, tail]), neighbors])
 
     maini2sub2 = {v:k for k,v in enumerate(neighbors)}
 
     row, col = adj[neighbors][:,neighbors].nonzero()
+    tmr.cal_and_update('get_nei')
 
     gt_g = Graph()
     gt_g.add_vertex(len(neighbors))
     gt_g.add_edge_list(np.concatenate([row.reshape(-1,1), col.reshape(-1,1)],axis=-1))
+    tmr.cal_and_update('makegraph')
 
     return gt_g, neighbors, maini2sub2
 
@@ -199,7 +226,7 @@ def sample_subgraph_around_link_dgl(adj, graph, head, tail, max_dist, sample_siz
 
     return ng, neighbors, maini2sub2
 
-def shortest_dist_sparse_mult(adj_mat, source=None, hop=6):
+def shortest_dist_sparse_mult(adj_mat, hop=6, source=None):
     if source is not None:
         neighbor_adj = adj_mat[source]
         ind = source

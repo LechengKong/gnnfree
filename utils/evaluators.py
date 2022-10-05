@@ -165,6 +165,10 @@ class HNEvaluator(MaxEvaluator):
             metrics['h'+str(self.hn)] = hncount/np.sum(all_targets)
         return metrics
 
+    def reset(self):
+        self.targets = []
+        self.scores = []
+
 class BinaryAccEvaluator(MaxEvaluator):
     def __init__(self, name) -> None:
         super().__init__(name)
