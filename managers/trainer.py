@@ -1,14 +1,15 @@
 import numpy as np
 import torch
 from tqdm import tqdm
+from gnnfree.managers.learner import Learner
 
 from gnnfree.utils.utils import SmartTimer
 
 class Trainer():
-    def __init__(self, evaluator, prepare_eval, num_workers=4, train_sample_size=None, eval_sample_size=None):
+    def __init__(self, evaluator, loss_fn, num_workers=4, train_sample_size=None, eval_sample_size=None):
         self.timer = SmartTimer(False)
         self.evaluator = evaluator
-        self.prepare_eval = prepare_eval
+        self.loss_fn = loss_fn
         self.num_workers = num_workers
         self.train_sample_size = train_sample_size
         self.eval_sample_size = eval_sample_size
@@ -28,7 +29,7 @@ class Trainer():
         print(eval_metric)
         return eval_metric
 
-    def train_epoch(self, learner, optimizer, device=None):
+    def train_epoch(self, learner:Learner, optimizer, device=None):
         dataloader = learner.create_dataloader(learner.batch_size, num_workers=self.num_workers, sample_size=self.train_sample_size)
         pbar = tqdm(dataloader)
         learner.train()
@@ -42,15 +43,16 @@ class Trainer():
             self.timer.cal_and_update('move')
             res = learner.forward_func(data)
             self.timer.cal_and_update('forward')
-            loss = learner.loss_fn(res, data)
+            loss_arg = learner.data_to_loss_arg(res, data)
+            loss = self.loss_fn(*loss_arg)
             self.timer.cal_and_update('loss')
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             self.timer.cal_and_update('back')
             with torch.no_grad():
-                eval_data = self.prepare_eval(res, data)
-                self.evaluator.collect_res(*eval_data)
+                eval_arg = learner.data_to_eval_arg(res, data)
+                self.evaluator.collect_res(*eval_arg)
                 t_loss.append(loss.item())
             self.timer.cal_and_update('score')
         metrics = self.evaluator.summarize_res()
@@ -74,8 +76,8 @@ class Trainer():
                 res = learner.forward_func(data)
                 # self.timer.cal_and_update('forward')
                 # loss = learner.loss_func(res, data)
-                eval_data = self.prepare_eval(res, data)
-                self.evaluator.collect_res(*eval_data)
+                eval_arg = learner.data_to_eval_arg(res, data)
+                self.evaluator.collect_res(*eval_arg)
                 self.timer.cal_and_update('loss')
         metrics = self.evaluator.summarize_res()
         learner.postprocess()

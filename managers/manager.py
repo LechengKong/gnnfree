@@ -20,26 +20,34 @@ class Manager():
                 if update:
                     print('Found better model')
                     best_res = res
-                    self.save_model(train_learner)
+                    self.save_model(train_learner, optimizer)
             if epoch%save_epoch==0:
-                self.save_checkpoint(train_learner)
+                self.save_checkpoint(train_learner, optimizer)
             self.optimizer_update(optimizer)
 
     def eval(self, learner, trainer, device=None):
         metrics = trainer.eval_scheduled(learner, device=device)
         return metrics
 
-    def load_model(self, learner):
-        learner.load_model(self.save_path+'.pth')
+    def load_model(self, learner, optimizer=None, device=None):
+        state_d = torch.load(self.save_path+'.pth', device)
+        if optimizer is not None:
+            optimizer.load_state_dict(state_d['optimizer'])
+        learner.model.load_state_dict(state_d['state_dict'])
+        self.current_epoch = state_d['epoch']+1
 
     def optimizer_update(self, optimizer):
         pass
 
-    def save_model(self, learner):
+    def save_model(self, learner, optimizer):
         save_dict = {'epoch':self.current_epoch}
-        learner.save_model(self.save_path+'.pth', save_dict)
+        save_dict['state_dict'] = learner.model.state_dict()
+        save_dict['optimizer'] = optimizer.state_dict()
+        torch.save(save_dict, self.save_path+'.pth')
 
-    def save_checkpoint(self, learner):
+    def save_checkpoint(self, learner, optimizer):
         save_dict = {'epoch':self.current_epoch}
-        learner.save_model(self.save_path+'check.pth', save_dict)
+        save_dict['state_dict'] = learner.model.state_dict()
+        save_dict['optimizer'] = optimizer.state_dict()
+        torch.save(save_dict, self.save_path+'.pth')
 
