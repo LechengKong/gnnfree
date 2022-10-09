@@ -6,7 +6,7 @@ class Manager():
         self.starting_epoch = 0
         self.current_epoch = self.starting_epoch
             
-    def train(self, train_learner, val_learner, trainer, optimizer, metric_name= 'mrr', save_epoch=1, device=None, eval_every=1, num_epochs=10):
+    def train(self, train_learner, val_learner, trainer, optimizer, metric_name= 'mrr', save_epoch=1, device=None, eval_every=1, num_epochs=10, scheduler=None):
         print('Train: Optimize w.r.t', metric_name)
         best_res = trainer.init_metric()
         for epoch in range(self.starting_epoch+1, self.starting_epoch+num_epochs+1):
@@ -23,7 +23,7 @@ class Manager():
                     self.save_model(train_learner, optimizer)
             if epoch%save_epoch==0:
                 self.save_checkpoint(train_learner, optimizer)
-            self.optimizer_update(optimizer)
+            self.optimizer_update(optimizer, scheduler)
 
     def eval(self, learner, trainer, device=None):
         metrics = trainer.eval_scheduled(learner, device=device)
@@ -36,8 +36,9 @@ class Manager():
         learner.model.load_state_dict(state_d['state_dict'])
         self.current_epoch = state_d['epoch']+1
 
-    def optimizer_update(self, optimizer):
-        pass
+    def optimizer_update(self, optimizer, scheduler):
+        if scheduler is not None:
+            scheduler.step()
 
     def save_model(self, learner, optimizer):
         save_dict = {'epoch':self.current_epoch}
@@ -49,5 +50,5 @@ class Manager():
         save_dict = {'epoch':self.current_epoch}
         save_dict['state_dict'] = learner.model.state_dict()
         save_dict['optimizer'] = optimizer.state_dict()
-        torch.save(save_dict, self.save_path+'.pth')
+        torch.save(save_dict, self.save_path+'_checkpoint.pth')
 
