@@ -1,12 +1,12 @@
-import time
 import numpy as np
-from scipy.sparse import csr_matrix, tril
+from scipy.sparse import csr_matrix
 import os.path as osp
 import os
 import torch
 from tqdm import tqdm
 
 from gnnfree.utils.graph import construct_graph_from_edges
+
 
 def read_knowledge_graph(files, relation2id=None):
     entity2id = {}
@@ -23,7 +23,7 @@ def read_knowledge_graph(files, relation2id=None):
 
         data = []
         with open(file_path) as f:
-            file_data = [line.split() for line in f.read().split('\n')[:-1]]
+            file_data = [line.split() for line in f.read().split("\n")[:-1]]
 
         for triplet in file_data:
             if triplet[0] not in entity2id:
@@ -37,8 +37,14 @@ def read_knowledge_graph(files, relation2id=None):
                 rel += 1
                 rel_list.append([])
 
-            data.append([entity2id[triplet[0]], relation2id[triplet[1]], entity2id[triplet[2]]])
-        
+            data.append(
+                [
+                    entity2id[triplet[0]],
+                    relation2id[triplet[1]],
+                    entity2id[triplet[2]],
+                ]
+            )
+
         for trip in data:
             rel_list[trip[1]].append([trip[0], trip[2]])
 
@@ -50,20 +56,47 @@ def read_knowledge_graph(files, relation2id=None):
     adj_list = []
     for rel_mat in rel_list:
         rel_array = np.array(rel_mat)
-        if len(rel_array)==0:
-            adj_list.append(csr_matrix((len(entity2id),len(entity2id))))
+        if len(rel_array) == 0:
+            adj_list.append(csr_matrix((len(entity2id), len(entity2id))))
         else:
-            adj_list.append(csr_matrix((np.ones(len(rel_mat)),(rel_array[:,0],rel_array[:,1])), shape=(len(entity2id),len(entity2id))))
+            adj_list.append(
+                csr_matrix(
+                    (
+                        np.ones(len(rel_mat)),
+                        (rel_array[:, 0], rel_array[:, 1]),
+                    ),
+                    shape=(len(entity2id), len(entity2id)),
+                )
+            )
 
-    return adj_list, converted_triplets, entity2id, relation2id, id2entity, id2relation
+    return (
+        adj_list,
+        converted_triplets,
+        entity2id,
+        relation2id,
+        id2entity,
+        id2relation,
+    )
 
-def save_load_torch_data(folder_path, data, num_output=1, data_fold=5, data_name='saved_gd_data', num_workers=32):
+
+def save_load_torch_data(
+    folder_path,
+    data,
+    num_output=1,
+    data_fold=5,
+    data_name="saved_gd_data",
+    num_workers=32,
+):
     saved_data_path = osp.join(folder_path, data_name)
     if not osp.exists(saved_data_path):
         os.mkdir(saved_data_path)
-        dt = torch.utils.data.DataLoader(data, batch_size=256, num_workers=32,)
+        dt = torch.utils.data.DataLoader(
+            data,
+            batch_size=256,
+            num_workers=32,
+        )
         pbar = tqdm(dt)
-        fold_len = int(len(dt)/(data_fold-1))
+        fold_len = int(len(dt) / (data_fold - 1))
         count = 0
         fold_count = 0
         for i, t in enumerate(pbar):
@@ -76,31 +109,41 @@ def save_load_torch_data(folder_path, data, num_output=1, data_fold=5, data_name
             else:
                 for j, v in enumerate(t):
                     data_col[j].append(v)
-            count+=1
+            count += 1
             if count == fold_len:
                 for i, it in enumerate(data_col):
                     cdata = torch.cat(it, dim=0).numpy()
-                    np.save(osp.join(saved_data_path, str(i)+'_'+str(fold_count)), cdata)
+                    np.save(
+                        osp.join(
+                            saved_data_path, str(i) + "_" + str(fold_count)
+                        ),
+                        cdata,
+                    )
                     for itm in it:
                         del itm
                     del cdata
                 fold_count += 1
                 count = 0
-        if count >0 :
+        if count > 0:
             for i, it in enumerate(data_col):
                 cdata = torch.cat(it, dim=0).numpy()
-                np.save(osp.join(saved_data_path, str(i)+'_'+str(fold_count)), cdata)
+                np.save(
+                    osp.join(saved_data_path, str(i) + "_" + str(fold_count)),
+                    cdata,
+                )
     saved_data = []
     if num_output == 1:
         for j in range(data_fold):
-            ipath = osp.join(saved_data_path, str(0)+'_'+str(j)+'.npy')
+            ipath = osp.join(saved_data_path, str(0) + "_" + str(j) + ".npy")
             if osp.exists(ipath):
                 saved_data.append(np.load(ipath))
     else:
         for i in range(num_output):
             saved_data.append([])
             for j in range(data_fold):
-                ipath = osp.join(saved_data_path, str(i)+'_'+str(j)+'.npy')
+                ipath = osp.join(
+                    saved_data_path, str(i) + "_" + str(j) + ".npy"
+                )
                 if osp.exists(ipath):
                     saved_data[i].append(np.load(ipath))
     return saved_data, data_fold
@@ -121,10 +164,15 @@ def load_exp_dataset(directory):
             for j in range(num_vertex):
                 vertex = data.readline().rstrip().split(" ")
                 node_labels[j, int(vertex[0])] = 1
-                for k in range(2,len(vertex)):
+                for k in range(2, len(vertex)):
                     edges.append([j, int(vertex[k])])
             edges = np.array(edges)
-            g = construct_graph_from_edges(edges[:,0], edges[:,1], n_entities=num_vertex, inverse_edge=True)
-            g.ndata['feat'] = torch.tensor(node_labels, dtype=torch.float)
+            g = construct_graph_from_edges(
+                edges[:, 0],
+                edges[:, 1],
+                n_entities=num_vertex,
+                inverse_edge=True,
+            )
+            g.ndata["feat"] = torch.tensor(node_labels, dtype=torch.float)
             graphs.append(g)
     return graphs, np.array(labels)

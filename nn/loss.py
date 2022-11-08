@@ -1,13 +1,24 @@
-from turtle import forward
 import torch
+from abc import ABCMeta, abstractmethod
 
-class BinaryLoss(torch.nn.Module):
+
+class LossFunc(torch.nn.Module, metaclass=ABCMeta):
+    @abstractmethod
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def forward(self):
+        pass
+
+
+class BinaryLoss(LossFunc):
     def __init__(self, weight=None) -> None:
         super().__init__()
         self.loss = torch.nn.BCEWithLogitsLoss(pos_weight=weight)
 
     def forward(self, scores, labels):
-        if labels.dim()<=1:
+        if labels.dim() <= 1:
             labels = labels.unsqueeze(1)
         is_labeled = torch.logical_not(torch.isnan(labels))
         target_res = scores[is_labeled]
@@ -15,7 +26,8 @@ class BinaryLoss(torch.nn.Module):
         loss = self.loss(target_res, target_label)
         return loss
 
-class MultiClassLoss(torch.nn.Module):
+
+class MultiClassLoss(LossFunc):
     def __init__(self) -> None:
         super().__init__()
         self.loss = torch.nn.CrossEntropyLoss()
@@ -24,26 +36,32 @@ class MultiClassLoss(torch.nn.Module):
         loss = self.loss(scores, labels.to(torch.long))
         return loss
 
-class InfoNCEloss(torch.nn.Module):
+
+class InfoNCEloss(LossFunc):
     def __init__(self) -> None:
         super().__init__()
 
     def forward(self, MI_MAT):
         n = len(MI_MAT)
-        e_neg_mat = MI_MAT.view(-1)[1:].view(n-1,n+1)[:,:-1].reshape(n,n-1)
+        e_neg_mat = (
+            MI_MAT.view(-1)[1:].view(n - 1, n + 1)[:, :-1].reshape(n, n - 1)
+        )
         e_pos = torch.diagonal(MI_MAT)
-        loss = -torch.mean(torch.log(torch.exp(e_pos)/torch.exp(e_neg_mat).sum(dim=-1)))
+        loss = -torch.mean(
+            torch.log(torch.exp(e_pos) / torch.exp(e_neg_mat).sum(dim=-1))
+        )
         return loss
 
 
-class CCALoss(torch.nn.Module):
+class CCALoss(LossFunc):
     def __init__(self, outdim_size=20):
         super().__init__()
         self.outdim_size = outdim_size
 
     def forward(self, H1, H2):
         """
-        It is the loss function of CCA as introduced in the original paper. There can be other formulations.
+        It is the loss function of CCA as introduced in the original paper.
+        There can be other formulations.
         """
 
         r1 = 1e-5
@@ -57,7 +75,7 @@ class CCALoss(torch.nn.Module):
         o1 = o2 = H1.size(0)
 
         m = H1.size(1)
-#         print(H1.size())
+        #         print(H1.size())
 
         H1bar = H1 - H1.mean(dim=1).unsqueeze(dim=1)
         H2bar = H2 - H2.mean(dim=1).unsqueeze(dim=1)
@@ -65,10 +83,12 @@ class CCALoss(torch.nn.Module):
         # assert torch.isnan(H2bar).sum().item() == 0
 
         SigmaHat12 = (1.0 / (m - 1)) * torch.matmul(H1bar, H2bar.t())
-        SigmaHat11 = (1.0 / (m - 1)) * torch.matmul(H1bar,
-                                                    H1bar.t()) + r1 * torch.eye(o1, device=H1.device)
-        SigmaHat22 = (1.0 / (m - 1)) * torch.matmul(H2bar,
-                                                    H2bar.t()) + r2 * torch.eye(o2, device=H1.device)
+        SigmaHat11 = (1.0 / (m - 1)) * torch.matmul(
+            H1bar, H1bar.t()
+        ) + r1 * torch.eye(o1, device=H1.device)
+        SigmaHat22 = (1.0 / (m - 1)) * torch.matmul(
+            H2bar, H2bar.t()
+        ) + r2 * torch.eye(o2, device=H1.device)
         # print(SigmaHat11.sum())
         # print(SigmaHat22.sum())
         # print(SigmaHat12.sum())
@@ -76,14 +96,17 @@ class CCALoss(torch.nn.Module):
         assert torch.isnan(SigmaHat12).sum().item() == 0
         assert torch.isnan(SigmaHat22).sum().item() == 0
 
-        # Calculating the root inverse of covariance matrices by using eigen decomposition
         [D1, V1] = torch.linalg.eigh(SigmaHat11)
         [D2, V2] = torch.linalg.eigh(SigmaHat22)
-        v1,c1 = torch.unique(D1, return_counts=True)
-        v2,c2 = torch.unique(D2, return_counts=True)
-        if len(v1[c1>1])>0 or len(v2[c2>1])>0:
-            print('sht')
-            return torch.tensor(0, requires_grad=True, dtype=torch.float), torch.eye(o1), torch.eye(o1)
+        v1, c1 = torch.unique(D1, return_counts=True)
+        v2, c2 = torch.unique(D2, return_counts=True)
+        if len(v1[c1 > 1]) > 0 or len(v2[c2 > 1]) > 0:
+            print("sht")
+            return (
+                torch.tensor(0, requires_grad=True, dtype=torch.float),
+                torch.eye(o1),
+                torch.eye(o1),
+            )
         assert torch.isnan(D1).sum().item() == 0
         assert torch.isnan(D2).sum().item() == 0
         assert torch.isnan(V1).sum().item() == 0
@@ -100,77 +123,97 @@ class CCALoss(torch.nn.Module):
         # print(posInd2.size())
 
         SigmaHat11RootInv = torch.matmul(
-            torch.matmul(V1, torch.diag(D1 ** -0.5)), V1.t())
+            torch.matmul(V1, torch.diag(D1**-0.5)), V1.t()
+        )
         SigmaHat22RootInv = torch.matmul(
-            torch.matmul(V2, torch.diag(D2 ** -0.5)), V2.t())
+            torch.matmul(V2, torch.diag(D2**-0.5)), V2.t()
+        )
 
-        Tval = torch.matmul(torch.matmul(SigmaHat11RootInv,
-                                         SigmaHat12), SigmaHat22RootInv)                                
-#         print(Tval.size())
+        Tval = torch.matmul(
+            torch.matmul(SigmaHat11RootInv, SigmaHat12), SigmaHat22RootInv
+        )
+        #         print(Tval.size())
 
         # just the top self.outdim_size singular values are used
         trace_TT = torch.matmul(Tval.t(), Tval)
-        trace_TT = torch.add(trace_TT, (torch.eye(trace_TT.shape[0])*r1).to(H1.device)) # regularization for more stability
+        trace_TT = torch.add(
+            trace_TT, (torch.eye(trace_TT.shape[0]) * r1).to(H1.device)
+        )  # regularization for more stability
         U, V = torch.linalg.eigh(trace_TT)
-        U = torch.where(U>eps, U, (torch.ones(U.shape)*eps).to(H1.device))
+        U = torch.where(U > eps, U, (torch.ones(U.shape) * eps).to(H1.device))
         U = U.topk(self.outdim_size)[0]
         corr = torch.sum(torch.sqrt(U))
         U, S, V = torch.svd(Tval)
-        U = U[:,:self.outdim_size]
-        V = V[:,:self.outdim_size]
+        U = U[:, : self.outdim_size]
+        V = V[:, : self.outdim_size]
         U = torch.matmul(SigmaHat11RootInv, U)
         V = torch.matmul(SigmaHat22RootInv, V)
         return corr, U, V
 
 
-class IDLoss(torch.nn.Module):
+class IDLoss(LossFunc):
     def __init__(self) -> None:
         super().__init__()
-    
+
     def forward(self, res):
         return res
 
-class MSELoss(torch.nn.Module):
+
+class MSELoss(LossFunc):
     def __init__(self) -> None:
         super().__init__()
         self.loss = torch.nn.MSELoss()
-    
+
     def forward(self, pred, target):
         return self.loss(pred, target)
 
-class NegLogLoss(torch.nn.Module):
+
+class NegLogLoss(LossFunc):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
         self.neg_sample = num_neg_samples
-    
+
     def forward(self, res):
-        score_mat = res.view(-1, self.neg_sample+1)
+        score_mat = res.view(-1, self.neg_sample + 1)
         score_mat = torch.sigmoid(score_mat)
-        loss = torch.mean(-torch.log(score_mat[:,0])-(torch.log(1-score_mat[:,1:])).mean(dim=-1))
+        loss = torch.mean(
+            -torch.log(score_mat[:, 0])
+            - (torch.log(1 - score_mat[:, 1:])).mean(dim=-1)
+        )
         return loss
 
-class FirstPosNegLoss(torch.nn.Module):
+
+class FirstPosNegLoss(LossFunc):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
         self.neg_sample = num_neg_samples
         self.loss = torch.nn.BCEWithLogitsLoss()
-    
+
     def forward(self, res):
-        score_mat = res.view(-1, self.neg_sample+1)
+        score_mat = res.view(-1, self.neg_sample + 1)
         target = torch.zeros_like(score_mat)
-        target[:,0]=1
+        target[:, 0] = 1
         loss = self.loss(score_mat.flatten(), target.flatten())
         return loss
 
-class MRRLoss(torch.nn.Module):
+
+class MRRLoss(LossFunc):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
-        self.loss = torch.nn.MarginRankingLoss(15, reduction='sum')
+        self.loss = torch.nn.MarginRankingLoss(15, reduction="sum")
         self.num_neg_samples = num_neg_samples
-    
+
     def forward(self, res):
-        scores_mat = res.view(-1, self.num_neg_samples+1)
-        score_pos = scores_mat[:, 0].unsqueeze(1).repeat_interleave(self.num_neg_samples, dim=-1)
+        scores_mat = res.view(-1, self.num_neg_samples + 1)
+        score_pos = (
+            scores_mat[:, 0]
+            .unsqueeze(1)
+            .repeat_interleave(self.num_neg_samples, dim=-1)
+        )
         score_neg = scores_mat[:, 1:]
-        loss = self.loss(score_pos, score_neg, torch.ones_like(score_pos).to(device=res.device))
+        loss = self.loss(
+            score_pos,
+            score_neg,
+            torch.ones_like(score_pos).to(device=res.device),
+        )
         return loss

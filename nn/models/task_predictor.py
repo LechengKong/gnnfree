@@ -4,7 +4,7 @@ import dgl
 
 from gnnfree.nn.models.basic_models import MLPLayers
 from gnnfree.utils.utils import SmartTimer
-from gnnfree.nn.pooling import NodePairExtractor, Pooler, feature_module_dict
+from gnnfree.nn.pooling import NodePairExtractor
 
 
 class GraphClassifier(nn.Module):
@@ -38,11 +38,12 @@ class GraphClassifier(nn.Module):
         return self.mlp_graph(g_repr)
 
     def pool_from_graph(self, g, repr, input):
-        g.ndata['node_res'] = repr
+        g.ndata["node_res"] = repr
 
-        g_sum = dgl.sum_nodes(g, 'node_res')
+        g_sum = dgl.sum_nodes(g, "node_res")
 
         return g_sum
+
 
 class LinkPredictor(nn.Module):
     def __init__(self, emb_dim, gnn, add_self_loop=False):
@@ -51,7 +52,7 @@ class LinkPredictor(nn.Module):
         self.emb_dim = emb_dim
 
         self.gnn = gnn
-        
+
         self.timer = SmartTimer(False)
 
         self.node_pair_extract = NodePairExtractor(self.emb_dim)
@@ -63,7 +64,9 @@ class LinkPredictor(nn.Module):
         self.use_only_embedding = False
 
         self.build_predictor()
-        self.link_mlp = MLPLayers(3, [self.link_dim, self.emb_dim, self.emb_dim, 1])
+        self.link_mlp = MLPLayers(
+            3, [self.link_dim, self.emb_dim, self.emb_dim, 1]
+        )
 
     def build_predictor(self):
         pass
@@ -73,7 +76,7 @@ class LinkPredictor(nn.Module):
 
     def forward(self, g, head, tail, input):
         if self.use_only_embedding:
-            repr = g.ndata['repr']
+            repr = g.ndata["repr"]
         else:
             if self.add_self_loop:
                 g = dgl.add_self_loop(g)
@@ -116,7 +119,7 @@ class NodeClassifier(nn.Module):
 
     def forward(self, g, node, input):
         if self.use_only_embedding:
-            repr = g.ndata['repr']
+            repr = g.ndata["repr"]
         else:
             if self.add_self_loop:
                 g = dgl.add_self_loop(g)
