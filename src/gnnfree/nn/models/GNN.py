@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from abc import ABCMeta, abstractmethod
-from gnnfree.nn.models.basic_models import MLPLayers
 
 from gnnfree.utils.utils import SmartTimer
 
