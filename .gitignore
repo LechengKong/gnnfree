@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Pytorch files
+*.pth
+
+# vscode
+.vscode/

@@ -3,10 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from abc import ABCMeta, abstractmethod
-from dgl.nn.pytorch import RelGraphConv
 from gnnfree.nn.models.basic_models import MLPLayers
 
-from gnnfree.nn.models.gnn_layers import GINELayer, GINLayer
 from gnnfree.utils.utils import SmartTimer
 
 from torch_scatter import scatter
@@ -69,7 +67,7 @@ class MultiLayerMessagePassing(nn.Module, metaclass=ABCMeta):
     def build_message_from_output(self, g, h):
         pass
 
-    def forward(self, g):
+    def forward(self, batched):
         h_list = []
 
         message = self.build_message_from_graph(g)
@@ -190,7 +188,9 @@ class HomogeneousGNN(MultiLayerMessagePassing):
         self.build_layers()
 
     def build_one_layer(self, inp_dim, out_dim):
-        return self.layer_t(inp_dim, out_dim)
+        return self.layer_t(
+            inp_dim, out_dim, batch_norm=self.batch_norm is not None
+        )
 
     def build_message_from_graph(self, g):
         return {"g": g, "h": g.ndata["feat"]}

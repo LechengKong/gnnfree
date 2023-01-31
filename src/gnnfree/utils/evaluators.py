@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import multiprocessing as mp
 from abc import ABCMeta, abstractmethod
-from gnnfree.utils.utils import get_rank
+from gnnfree.utils import get_rank
 from sklearn import metrics as met
 
 
@@ -179,16 +179,34 @@ class HNEvaluator(MaxEvaluator):
         is_labeled = np.logical_not(np.isnan(all_targets))
         all_scores = all_scores[is_labeled]
         all_targets = all_targets[is_labeled]
-        metrics["apr"] = met.average_precision_score(all_targets, all_scores)
-        metrics["auc"] = met.roc_auc_score(all_targets, all_scores)
-        if self.hn is not None:
-            sort_ind = np.argsort(all_scores)
-            ranked_targets = all_targets[sort_ind[::-1]]
-            ranked_targets = np.logical_not(ranked_targets)
-            sumed_arr = np.cumsum(ranked_targets)
-            break_ind = np.where(sumed_arr == self.hn)[0][0]
-            hncount = break_ind - (self.hn - 1)
-            metrics["h" + str(self.hn)] = hncount / np.sum(all_targets)
+        sample_dist = np.sum(all_targets)
+        if sample_dist == 0:
+            metrics["apr"] = 0.0
+            metrics["auc"] = 0.0
+            metrics["h" + str(self.hn)] = 0.0
+        elif sample_dist == len(all_targets):
+            metrics["apr"] = 1.0
+            metrics["auc"] = 1.0
+            metrics["h" + str(self.hn)] = 1.0
+        else:
+            metrics["apr"] = met.average_precision_score(
+                all_targets, all_scores
+            )
+            metrics["auc"] = met.roc_auc_score(all_targets, all_scores)
+            # if self.hn is not None:
+            if (
+                self.hn is not None
+                and len(all_targets) - sample_dist > self.hn
+            ):
+                sort_ind = np.argsort(all_scores)
+                ranked_targets = all_targets[sort_ind[::-1]]
+                ranked_targets = np.logical_not(ranked_targets)
+                sumed_arr = np.cumsum(ranked_targets)
+                break_ind = np.where(sumed_arr == self.hn)[0][0]
+                hncount = break_ind - (self.hn - 1)
+                metrics["h" + str(self.hn)] = hncount / np.sum(all_targets)
+            else:
+                metrics["h" + str(self.hn)] = 1.0
         return metrics
 
     def reset(self):
