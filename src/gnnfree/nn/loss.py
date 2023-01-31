@@ -1,43 +1,7 @@
 import torch
-from abc import ABCMeta, abstractmethod
 
 
-class LossFunc(torch.nn.Module, metaclass=ABCMeta):
-    @abstractmethod
-    def __init__(self):
-        super().__init__()
-
-    @abstractmethod
-    def forward(self):
-        pass
-
-
-class BinaryLoss(LossFunc):
-    def __init__(self, weight=None) -> None:
-        super().__init__()
-        self.loss = torch.nn.BCEWithLogitsLoss(pos_weight=weight)
-
-    def forward(self, scores, labels):
-        if labels.dim() <= 1:
-            labels = labels.unsqueeze(1)
-        is_labeled = torch.logical_not(torch.isnan(labels))
-        target_res = scores[is_labeled]
-        target_label = labels[is_labeled].to(torch.float)
-        loss = self.loss(target_res, target_label)
-        return loss
-
-
-class MultiClassLoss(LossFunc):
-    def __init__(self) -> None:
-        super().__init__()
-        self.loss = torch.nn.CrossEntropyLoss()
-
-    def forward(self, scores, labels):
-        loss = self.loss(scores, labels.to(torch.long))
-        return loss
-
-
-class InfoNCEloss(LossFunc):
+class InfoNCEloss(torch.Module):
     def __init__(self) -> None:
         super().__init__()
 
@@ -53,7 +17,7 @@ class InfoNCEloss(LossFunc):
         return loss
 
 
-class CCALoss(LossFunc):
+class CCALoss(torch.Module):
     def __init__(self, outdim_size=20):
         super().__init__()
         self.outdim_size = outdim_size
@@ -151,7 +115,7 @@ class CCALoss(LossFunc):
         return corr, U, V
 
 
-class IDLoss(LossFunc):
+class IDLoss(torch.Module):
     def __init__(self) -> None:
         super().__init__()
 
@@ -159,16 +123,7 @@ class IDLoss(LossFunc):
         return res
 
 
-class MSELoss(LossFunc):
-    def __init__(self) -> None:
-        super().__init__()
-        self.loss = torch.nn.MSELoss()
-
-    def forward(self, pred, target):
-        return self.loss(pred, target)
-
-
-class NegLogLoss(LossFunc):
+class NegLogLoss(torch.Module):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
         self.neg_sample = num_neg_samples
@@ -183,7 +138,7 @@ class NegLogLoss(LossFunc):
         return loss
 
 
-class FirstPosNegLoss(LossFunc):
+class FirstPosNegLoss(torch.Module):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
         self.neg_sample = num_neg_samples
@@ -197,7 +152,7 @@ class FirstPosNegLoss(LossFunc):
         return loss
 
 
-class MRRLoss(LossFunc):
+class MRRLoss(torch.Module):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
         self.loss = torch.nn.MarginRankingLoss(15, reduction="sum")

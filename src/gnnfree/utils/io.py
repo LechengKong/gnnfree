@@ -149,7 +149,7 @@ def save_load_torch_data(
     return saved_data, data_fold
 
 
-def load_exp_dataset(directory):
+def load_exp_dataset_dgl(directory):
     graphs = []
     labels = []
     with open(directory, "r") as data:

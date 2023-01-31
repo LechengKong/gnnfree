@@ -5,7 +5,7 @@ import dgl
 from graph_tool.all import Graph
 
 
-def construct_graph_from_edges(
+def construct_dgl_graph_from_edges(
     ori_head,
     ori_tail,
     n_entities,

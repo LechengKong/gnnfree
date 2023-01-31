@@ -4,7 +4,7 @@ import torch.nn as nn
 from abc import ABCMeta, abstractmethod
 from torch_scatter import scatter
 
-from gnnfree.nn.models.basic_models import MLPLayers
+from torch_geometric.nn.models import MLP
 from gnnfree.utils import count_to_group_index
 
 
@@ -38,25 +38,13 @@ class Transform(Extractor):
 class GDTransform(Transform):
     """compute node-level GD representation."""
 
-    def __init__(self, emb_dim, gd_deg=True, batch_norm=True) -> None:
+    def __init__(self, emb_dim, gd_deg=True) -> None:
         super().__init__(emb_dim)
         self.gd_deg = gd_deg
         if gd_deg:
-            self.mlp_combine_gd_deg = MLPLayers(
-                2,
-                h_units=[emb_dim + 1, 2 * emb_dim, emb_dim],
-                batch_norm=False,
-            )
-        self.mlp_combine_nei_gd = MLPLayers(
-            2,
-            h_units=[2 * emb_dim + 1, 4 * emb_dim, emb_dim],
-            batch_norm=batch_norm,
-        )
-        self.mlp_combine_node_nei = MLPLayers(
-            2,
-            h_units=[2 * emb_dim, 4 * emb_dim, emb_dim],
-            batch_norm=batch_norm,
-        )
+            self.mlp_combine_gd_deg = MLP([emb_dim + 1, 2 * emb_dim, emb_dim])
+        self.mlp_combine_nei_gd = MLP([2 * emb_dim + 1, 4 * emb_dim, emb_dim])
+        self.mlp_combine_node_nei = MLP([2 * emb_dim, 4 * emb_dim, emb_dim])
 
     def forward(
         self,
@@ -119,7 +107,7 @@ class GDTransform(Transform):
         return node_repr
 
 
-class ReprIndexTransform(Transform):
+class ReprIndexTransform(Pooler):
     def forward(self, repr, ind):
         return repr[ind]
 
@@ -133,9 +121,9 @@ class EmbTransform(Transform):
         return self.emb(ind)
 
 
-class ScatterReprTransform(Transform):
-    def __init__(self, emb_dim, scatter_method="sum"):
-        super().__init__(emb_dim)
+class ScatterReprTransform(Pooler):
+    def __init__(self, scatter_method="sum"):
+        super().__init__()
         self.scatter_method = scatter_method
 
     def forward(self, repr, ind, ind_block):
@@ -157,12 +145,8 @@ class VerGDTransform(Transform):
         super().__init__(emb_dim)
         self.gd_deg = gd_deg
         if gd_deg:
-            self.mlp_combine_gd_deg = MLPLayers(
-                2, h_units=[emb_dim + 1, 2 * emb_dim, emb_dim]
-            )
-        self.mlp_gd_process = MLPLayers(
-            2, h_units=[emb_dim, 2 * emb_dim, emb_dim]
-        )
+            self.mlp_combine_gd_deg = MLP([emb_dim + 1, 2 * emb_dim, emb_dim])
+        self.mlp_gd_process = MLP([emb_dim, 2 * emb_dim, emb_dim])
 
     def get_ver_gd_one_side(self, repr, gd, gd_len, gd_deg):
         """Get vertical geodesics of one side.
@@ -197,7 +181,7 @@ class VerGDTransform(Transform):
         return self.mlp_gd_process(gd_repr)
 
 
-class IdentityTransform(Transform):
+class ReshapeTransform(Transform):
     def __init__(self, emb_dim):
         super().__init__(emb_dim)
 

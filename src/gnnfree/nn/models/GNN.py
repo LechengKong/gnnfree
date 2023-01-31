@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from torch_geometric.nn.models import MLP
+
 from abc import ABCMeta, abstractmethod
 
 from gnnfree.utils.utils import SmartTimer
@@ -15,13 +17,12 @@ class MultiLayerMessagePassing(nn.Module, metaclass=ABCMeta):
         num_layers,
         inp_dim,
         out_dim,
-        drop_ratio=0,
+        drop_ratio=None,
         JK="last",
         batch_norm=True,
     ):
         super().__init__()
         self.num_layers = num_layers
-        self.drop_ratio = 0
         self.JK = JK
         self.inp_dim = inp_dim
         self.out_dim = out_dim
@@ -42,16 +43,16 @@ class MultiLayerMessagePassing(nn.Module, metaclass=ABCMeta):
     def build_layers(self):
         for layer in range(self.num_layers):
             if layer == 0:
-                self.conv.append(
-                    self.build_one_layer(self.inp_dim, self.out_dim)
-                )
+                self.conv.append(self.build_input_layer())
             else:
-                self.conv.append(
-                    self.build_one_layer(self.out_dim, self.out_dim)
-                )
+                self.conv.append(self.build_hidden_layer())
 
     @abstractmethod
-    def build_one_layer(self, inp_dim, out_dim):
+    def build_input_layer(self):
+        pass
+
+    @abstractmethod
+    def build_hidden_layer(self):
         pass
 
     @abstractmethod
@@ -59,17 +60,17 @@ class MultiLayerMessagePassing(nn.Module, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def build_message_from_graph(self, g):
+    def build_message_from_input(self, g):
         pass
 
     @abstractmethod
-    def build_message_from_output(self, g, h):
+    def build_message_from_output(self, g, output):
         pass
 
-    def forward(self, batched):
+    def forward(self, g):
         h_list = []
 
-        message = self.build_message_from_graph(g)
+        message = self.build_message_from_input(g)
 
         for layer in range(self.num_layers):
             # print(layer, h)
@@ -77,10 +78,8 @@ class MultiLayerMessagePassing(nn.Module, metaclass=ABCMeta):
             if self.batch_norm:
                 h = self.batch_norm[layer](h)
             if layer != self.num_layers - 1:
-                h = F.dropout(
-                    F.relu(h), p=self.drop_ratio, training=self.training
-                )
-            else:
+                h = F.relu(h)
+            if self.drop_ratio is not None:
                 h = F.dropout(h, p=self.drop_ratio, training=self.training)
             message = self.build_message_from_output(g, h)
             h_list.append(h)
@@ -100,7 +99,7 @@ class MultiLayerMessagePassingVN(MultiLayerMessagePassing):
         num_layers,
         inp_dim,
         out_dim,
-        drop_ratio=0,
+        drop_ratio=None,
         JK="last",
         batch_norm=True,
     ):
@@ -114,15 +113,13 @@ class MultiLayerMessagePassingVN(MultiLayerMessagePassing):
         self.virtualnode_mlp_list = torch.nn.ModuleList()
         for layer in range(self.num_layers - 1):
             self.virtualnode_mlp_list.append(
-                MLPLayers(
-                    2, h_units=[self.out_dim, 2 * self.out_dim, self.out_dim]
-                )
+                MLP([self.out_dim, 2 * self.out_dim, self.out_dim])
             )
 
     def forward(self, g):
         h_list = []
 
-        message = self.build_message_from_graph(g)
+        message = self.build_message_from_input(g)
 
         vnode_embed = self.virtualnode_embedding(
             torch.zeros(g.batch_size, dtype=torch.int).to(g.device)
@@ -138,10 +135,8 @@ class MultiLayerMessagePassingVN(MultiLayerMessagePassing):
             if self.batch_norm:
                 h = self.batch_norm[layer](h)
             if layer != self.num_layers - 1:
-                h = F.dropout(
-                    F.relu(h), p=self.drop_ratio, training=self.training
-                )
-            else:
+                h = F.relu(h)
+            if self.drop_ratio is not None:
                 h = F.dropout(h, p=self.drop_ratio, training=self.training)
             message = self.build_message_from_output(g, h)
             h_list.append(h)
@@ -166,108 +161,6 @@ class MultiLayerMessagePassingVN(MultiLayerMessagePassing):
             repr = 0
             for layer in range(self.num_layers):
                 repr += h_list[layer]
+        elif self.JK == "cat":
+            repr = torch.cat([h_list], dim=-1)
         return repr
-
-
-class HomogeneousGNN(MultiLayerMessagePassing):
-    def __init__(
-        self,
-        num_layers,
-        inp_dim,
-        out_dim,
-        layer_t=GINLayer,
-        drop_ratio=0,
-        JK="last",
-        batch_norm=True,
-    ):
-        super().__init__(
-            num_layers, inp_dim, out_dim, drop_ratio, JK, batch_norm
-        )
-        self.layer_t = layer_t
-        self.build_layers()
-
-    def build_one_layer(self, inp_dim, out_dim):
-        return self.layer_t(
-            inp_dim, out_dim, batch_norm=self.batch_norm is not None
-        )
-
-    def build_message_from_graph(self, g):
-        return {"g": g, "h": g.ndata["feat"]}
-
-    def build_message_from_output(self, g, h):
-        return {"g": g, "h": h}
-
-    def layer_forward(self, layer, message):
-        return self.conv[layer](message["g"], message["h"])
-
-
-class HomogeneousEdgeGNN(MultiLayerMessagePassing):
-    def __init__(
-        self,
-        num_layers,
-        inp_dim,
-        out_dim,
-        edge_dim,
-        layer_t=GINELayer,
-        drop_ratio=0,
-        JK="last",
-        batch_norm=True,
-    ):
-        super().__init__(
-            num_layers, inp_dim, out_dim, layer_t, drop_ratio, JK, batch_norm
-        )
-        self.edge_dim = edge_dim
-        self.layer_t = layer_t
-        self.build_layers()
-
-    def build_one_layer(self, inp_dim, out_dim):
-        return self.layer_t(inp_dim, out_dim, self.edge_dim)
-
-    def build_message_from_graph(self, g):
-        return {"g": g, "h": g.ndata["feat"], "e": g.edata["feat"]}
-
-    def build_message_from_output(self, g, h):
-        return {"g": g, "h": h, "e": g.edata["feat"]}
-
-    def layer_forward(self, layer, message):
-        return self.conv[layer](message["g"], message["h"], message["e"])
-
-
-class RGCN(MultiLayerMessagePassing):
-    def __init__(
-        self,
-        num_layers,
-        num_rels,
-        inp_dim,
-        out_dim,
-        num_bases=4,
-        layer_t=RelGraphConv,
-        drop_ratio=0,
-        JK="last",
-        batch_norm=True,
-    ):
-        super().__init__(
-            num_layers, inp_dim, out_dim, drop_ratio, JK, batch_norm
-        )
-        self.num_rels = num_rels
-        self.num_bases = num_bases
-        self.layer_t = layer_t
-        self.build_layers()
-
-    def build_one_layer(self, inp_dim, out_dim):
-        return RelGraphConv(
-            inp_dim,
-            out_dim,
-            self.num_rels,
-            num_bases=self.num_bases,
-            activation=F.relu,
-        )
-
-    def build_message_from_graph(self, g):
-        return {"g": g, "h": g.ndata["feat"], "e": g.edata["type"]}
-
-    def build_message_from_output(self, g, h):
-        return {"g": g, "h": h, "e": g.edata["type"]}
-
-    def layer_forward(self, layer, message):
-        return self.conv[layer](message["g"], message["h"], message["e"])
