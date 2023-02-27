@@ -28,7 +28,7 @@ class PyGGIN(MultiLayerMessagePassing):
             train_eps=True,
         )
 
-    def build_output_layer(self):
+    def build_hidden_layer(self):
         return GINConv(
             MLP(
                 [self.out_dim, 2 * self.out_dim, self.out_dim],
@@ -71,7 +71,7 @@ class PyGGINE(MultiLayerMessagePassing):
             edge_dim=self.edge_dim,
         )
 
-    def build_output_layer(self):
+    def build_hidden_layer(self):
         return GINEConv(
             MLP([self.out_dim, self.out_dim * 2, self.out_dim]),
             train_eps=True,
@@ -110,6 +110,11 @@ class PyGRGCN(MultiLayerMessagePassing):
     def build_input_layer(self):
         return RGCNConv(
             self.inp_dim, self.out_dim, self.num_rels, num_bases=self.num_bases
+        )
+
+    def build_hidden_layer(self):
+        return RGCNConv(
+            self.out_dim, self.out_dim, self.num_rels, num_bases=self.num_bases
         )
 
     def build_message_from_input(self, g):

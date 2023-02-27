@@ -28,7 +28,7 @@ class DGLGIN(MultiLayerMessagePassing):
             learn_eps=True,
         )
 
-    def build_output_layer(self):
+    def build_hidden_layer(self):
         return GINConv(
             MLP(
                 [self.out_dim, 2 * self.out_dim, self.out_dim],
@@ -37,7 +37,7 @@ class DGLGIN(MultiLayerMessagePassing):
             learn_eps=True,
         )
 
-    def build_message_from_graph(self, g):
+    def build_message_from_input(self, g):
         return {"g": g, "h": g.ndata["feat"]}
 
     def build_message_from_output(self, g, h):
@@ -71,12 +71,12 @@ class DGLRGCN(MultiLayerMessagePassing):
             self.inp_dim, self.out_dim, self.num_rels, num_bases=self.num_bases
         )
 
-    def build_output_layer(self):
+    def build_hidden_layer(self):
         return RelGraphConv(
-            self.inp_dim, self.out_dim, self.num_rels, num_bases=self.num_bases
+            self.out_dim, self.out_dim, self.num_rels, num_bases=self.num_bases
         )
 
-    def build_message_from_graph(self, g):
+    def build_message_from_input(self, g):
         return {"g": g, "h": g.ndata["feat"], "e": g.edata["type"]}
 
     def build_message_from_output(self, g, h):

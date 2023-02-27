@@ -1,7 +1,7 @@
 import torch
 
 
-class InfoNCEloss(torch.Module):
+class InfoNCEloss(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
@@ -17,7 +17,7 @@ class InfoNCEloss(torch.Module):
         return loss
 
 
-class CCALoss(torch.Module):
+class CCALoss(torch.nn.Module):
     def __init__(self, outdim_size=20):
         super().__init__()
         self.outdim_size = outdim_size
@@ -115,7 +115,7 @@ class CCALoss(torch.Module):
         return corr, U, V
 
 
-class IDLoss(torch.Module):
+class IDLoss(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
@@ -123,7 +123,7 @@ class IDLoss(torch.Module):
         return res
 
 
-class NegLogLoss(torch.Module):
+class NegLogLoss(torch.nn.Module):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
         self.neg_sample = num_neg_samples
@@ -138,7 +138,7 @@ class NegLogLoss(torch.Module):
         return loss
 
 
-class FirstPosNegLoss(torch.Module):
+class FirstPosNegLoss(torch.nn.Module):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
         self.neg_sample = num_neg_samples
@@ -152,7 +152,7 @@ class FirstPosNegLoss(torch.Module):
         return loss
 
 
-class MRRLoss(torch.Module):
+class MRRLoss(torch.nn.Module):
     def __init__(self, num_neg_samples) -> None:
         super().__init__()
         self.loss = torch.nn.MarginRankingLoss(15, reduction="sum")

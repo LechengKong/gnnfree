@@ -9,32 +9,79 @@ import json
 
 
 class SmartTimer:
+    """A timer utility that output the elapsed time between this
+    call and last call.
+    """
+
     def __init__(self, verb=True) -> None:
+        """SmartTimer Constructor
+
+        Keyword Arguments:
+            verb {bool} -- Controls printing of the timer (default: {True})
+        """
         self.last = time.time()
         self.verb = verb
 
     def record(self):
+        """Record current timestamp"""
         self.last = time.time()
 
     def cal_and_update(self, name):
+        """Record current timestamp and print out time elapsed from last
+        recorded time.
+
+        Arguments:
+            name {string} -- identifier of the printout.
+        """
         now = time.time()
         if self.verb:
             print(name, now - self.last)
         self.record()
 
 
-def get_rank(b_score):
-    order = np.argsort(b_score)
-    return len(order) - np.where(order == 0)[0][0]
+class SparseData:
+    def __init__(self, data, data_count=None, data_offset=None):
+        self.data = data
+        if data_count is None and data_offset is None:
+            if isinstance(data, list):
+                self.num_data = len(data)
+                self.data_count = np.array([len(d) for d in data])
+                self.data = np.concatenate(data, axis=0)
+            elif isinstance(data, np.ndarray):
+                self.num_data = 1
+                self.data_count = len(data)
+            self.data_offset = self.count2offset(self.data_count)
+        if self.data_count is None:
+            self.data_count = self.offset2count(self.data_offset)
+        if self.data_offset is None:
+            self.data_offset = self.count2offset(self.data_count)
+
+    def count2offset(self, count):
+        return np.r_[0, np.cumsum(count[:-1])]
+
+    def offset2count(self, offset):
+        return np.r_[offset[1:], len(self.data)] - offset
 
 
 def save_params(filename, params):
+    """Write a Namespace object to file
+
+    Arguments:
+        filename {string} -- destination of the saved file
+        params {Namespace} -- namespace object
+    """
     d = vars(params)
     with open(filename, "a") as f:
         json.dump(d, f)
 
 
 def set_random_seed(seed):
+    """Set python, numpy, pytorch global random seed.
+    Does not guarantee determinism due to PyTorch's feature.
+
+    Arguments:
+        seed {int} -- Random seed to set
+    """
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
@@ -44,35 +91,54 @@ def set_random_seed(seed):
     os.environ["PYTHONHASHSEED"] = str(seed)
 
 
-def sample_variable_length_data(rown, coln, row_ind, col_ind):
-    # print(row_ind)
-    keep_arr = np.zeros((rown, coln + 2))
-    row_size_count = np.bincount(row_ind, minlength=rown)
-    row_cum = np.cumsum(row_size_count)
-    fill_size_count = np.clip(row_size_count, 0, coln)
-    keep_arr[:, 0] = 1
-    keep_arr[np.arange(len(row_size_count)), fill_size_count + 1] = -1
-    keep_arr = np.cumsum(keep_arr, axis=-1)[:, 1:-1]
-    keep_row, keep_col = keep_arr.nonzero()
-    shuffle_ind = row_size_count > coln
-    ind_arr = np.zeros_like(keep_arr, dtype=int)
-    ind_arr[:] = np.arange(coln)
-    if shuffle_ind.sum() > 0:
-        select_ind = np.random.choice(
-            1500, size=(np.sum(shuffle_ind), coln), replace=False
-        )
-        select_ind = select_ind % row_size_count[shuffle_ind][:, None]
-        ind_arr[shuffle_ind] = select_ind
-    if rown > 1:
-        ind_arr[1:] += row_cum[:-1, None]
-    sampled_ind = ind_arr[keep_row, keep_col]
-    sample_val = col_ind[sampled_ind]
-    sampled_arr = np.zeros_like(keep_arr)
-    sampled_arr[keep_row, keep_col] = sample_val
-    return sampled_arr, keep_arr
+def sparse_uniform_select(data, data_count, p=0.5):
+    """Randomly select from a sparse representation.
+
+    Arguments:
+        data {numpy.ndarray} -- Sparse data
+        data_count {numpy.ndarray} -- Sparse index of the data
+
+    Keyword Arguments:
+        p {int or numpy.ndarray} -- If int, mu=p for all entries,
+        if numpy.ndarray, should be of the same shape as data_count.
+         (default: {0.5})
+
+    Returns:
+        selected_data -- selected_data
+    """
+    if isinstance(p, np.ndarray):
+        p = np.repeat(p, data_count)
+    prob = np.random.rand(len(data))
+    select = prob < p
+    data_index = np.arange(len(data_count)).repeat(data_count)
+    new_data_count = np.bincount(data_index[select], minlength=len(data_count))
+    return data[select], new_data_count
+
+
+def sparse_uniform_sample(data, data_count, c=1):
+    if isinstance(c, int):
+        c = np.repeat(c, len(data_count))
+        c = (data_count > 0) * c
+    max_val = np.max(data_count) * 10
+    select_ind = np.random.randint(max_val, size=np.sum(c))
+    select_ind = select_ind % np.repeat(data_count, c)
+    offset = np.r_[0, data_count[:-1]]
+    offset = np.cumsum(offset)
+    select_ind = select_ind + offset.repeat(c)
+    return data[select_ind], c
 
 
 def k_fold_ind(labels, fold):
+    """Generate stratified k fold split index based on labels
+
+    Arguments:
+        labels {np.ndarray} -- labels of the data
+        fold {int} -- number of folds
+
+    Returns:
+        list[numpy.ndarray] -- A list whose elements are indices of data
+        in the fold.
+    """
     ksfold = StratifiedKFold(n_splits=fold, shuffle=True, random_state=10)
     folds = []
     for _, t_index in ksfold.split(
@@ -83,6 +149,17 @@ def k_fold_ind(labels, fold):
 
 
 def k_fold2_split(folds, data_len):
+    """Split the data index into train/test/validation based on fold,
+    one fold for testing, one fold for validataion and the rest for training.
+
+    Arguments:
+        folds {list[numpy.ndarray]} -- fold information
+        data_len {int} -- lenght of the data
+
+    Returns:
+        list[list[numpy.ndarray]] -- a list of train/test/validation split
+        indices.
+    """
     splits = []
     for i in range(len(folds)):
         test_arr = np.zeros(data_len, dtype=bool)
@@ -98,6 +175,16 @@ def k_fold2_split(folds, data_len):
 
 
 def dict_res_summary(res_col):
+    """Combine multiple dictionary information into one dictionary
+    so that all entries with the same key will be concatenated into
+    a list
+
+    Arguments:
+        res_col {list[dictionary]} -- a list of dictionary
+
+    Returns:
+        dictionary -- summarized dictionary information
+    """
     res_dict = {}
     for res in res_col:
         for k in res:

@@ -1,8 +1,9 @@
+import torch_geometric as pyg
 from abc import ABCMeta, abstractmethod
 
 from torch.utils.data import Dataset
 
-from gnnfree.utils.graph import dgl_graph_to_gt_graph
+from gnnfree.utils.graph import scipy_sparse_to_gt_graph
 
 
 class DatasetWithCollate(Dataset, metaclass=ABCMeta):
@@ -23,7 +24,7 @@ class DatasetWithCollate(Dataset, metaclass=ABCMeta):
         pass
 
 
-class SingleGraphDataset(DatasetWithCollate):
+class DGLSingleGraphDataset(DatasetWithCollate):
     def __init__(self, graph):
         super().__init__()
         self.num_nodes = graph.num_nodes()
@@ -31,4 +32,15 @@ class SingleGraphDataset(DatasetWithCollate):
         self.adj_mat = self.graph.adjacency_matrix(
             transpose=False, scipy_fmt="csr"
         )
-        self.gt_g = dgl_graph_to_gt_graph(self.graph)
+        self.gt_g = scipy_sparse_to_gt_graph(self.adj_mat)
+
+
+class PyGSingleGraphDataset(DatasetWithCollate):
+    def __init__(self, graph: pyg.data):
+        super().__init__()
+        self.num_nodes = graph.num_nodes()
+        self.graph = graph
+        self.adj_mat = pyg.utils.to_scipy_sparse_matrix(
+            graph.edge_index
+        ).tocsr()
+        self.gt_g = scipy_sparse_to_gt_graph(self.adj_mat)

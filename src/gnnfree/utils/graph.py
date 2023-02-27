@@ -93,12 +93,13 @@ def shortest_dist_sparse_mult(adj_mat, hop=6, source=None):
     return np.asarray(neighbor_dist)
 
 
-def dgl_graph_to_gt_graph(dgl_graph, directed=True):
-    row, col = dgl_graph.edges()
-    edges = torch.cat([row.view(-1, 1), col.view(-1, 1)], dim=-1)
+def scipy_sparse_to_gt_graph(adj, directed=True):
+    adj_coo = adj.tocoo(copy=True)
+    row, col = adj_coo.row, adj_coo.col
+    edges = np.stack([row, col], -1)
     gt_g = Graph()
-    gt_g.add_vertex(int(dgl_graph.num_nodes()))
-    gt_g.add_edge_list(edges.numpy())
+    gt_g.add_vertex(int(adj.shape[0]))
+    gt_g.add_edge_list(edges)
     gt_g.set_directed(directed)
     return gt_g
 
