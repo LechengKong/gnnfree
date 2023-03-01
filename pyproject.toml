@@ -1,3 +1,25 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnnfree"
+version = "0.0.0"
+authors = [
+    {name = "Lecheng Kong", email = "jeric05908@gmail.com"},
+]
+description = "An easy to use GNN development platform."
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["GNN", "Machine Learning"]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "numpy",
+    "torch",
+]
+
+[project.urls]
+homepage="https://github.com/woodcutter1998/gnnfree"
