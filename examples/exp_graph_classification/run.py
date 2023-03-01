@@ -1,147 +1,186 @@
 import torch
 import os.path as osp
+import argparse
+import networkx as nx
 import numpy as np
+import pickle as pkl
 import dgl
-from gnnfree.managers.trainer import Trainer
 from gnnfree.nn.loss import MultiClassLoss
 
-from gnnfree.nn.models.GNN import HomogeneousGNN
-from gnnfree.nn.models.task_predictor import GraphEncoder
-from gnnfree.managers import Manager
-from gnnfree.utils.datasets import DatasetWithCollate
+from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks.progress import TQDMProgressBar
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import CSVLogger
 
+from gnnfree.nn.models.pyg import PyGGIN
+from gnnfree.nn.models.util_model import MLP
+from dataset import GraphLabelDataset
 
 from gnnfree.utils.evaluators import BinaryAccEvaluator
 from gnnfree.utils.io import load_exp_dataset
-from gnnfree.utils.utils import k_fold2_split, k_fold_ind, set_random_seed
-from gnnfree.managers.learner import SingleModelLearner
-from gnnfree.nn.models.basic_models import MLPLayers, Predictor
-
-
-class GraphPredictionLearner(SingleModelLearner):
-    def forward_func(self, batch):
-        res = self.model(batch.g, batch)
-        # print(res)
-        return res
-
-    def data_to_loss_arg(self, res, batch):
-        return res, batch.labels
-
-
-class GraphLabelDataset(DatasetWithCollate):
-    def __init__(self, graphs, labels) -> None:
-        super().__init__()
-
-        self.graphs = graphs
-        self.labels = labels
-
-    def __getitem__(self, index):
-        return self.graphs[index], np.array([self.labels[index]])
-
-    def __len__(self):
-        return len(self.graphs)
-
-    def get_collate_fn(self):
-        return collate_graph_label
-
-
-class GraphLabelBatch:
-    def __init__(self, samples) -> None:
-        self.ls = []
-        self.g_list = []
-        self.label_list = []
-
-        for g, label in samples:
-            self.g_list.append(g)
-            self.label_list.append(label)
-        self.ls.append(dgl.batch(self.g_list))
-        self.ls.append(torch.tensor(np.concatenate(self.label_list)))
-
-    def to_name(self):
-        self.g = self.ls[0]
-        self.labels = self.ls[1]
-
-    def to(self, device):
-        for i in range(len(self.ls)):
-            self.ls[i] = self.ls[i].to(device)
-        self.device = device
-        return self
-
-
-def collate_graph_label(samples):
-    return GraphLabelBatch(samples)
-
-
-set_random_seed(1)
-
-if not torch.cuda.is_available():
-    device = torch.device("cpu")
-else:
-    device = torch.device("cuda:0")
-
-graphs, label = load_exp_dataset(
-    osp.join("./exp", "GRAPHSAT.txt")
+from gnnfree.utils.utils import (
+    k_fold2_split,
+    k_fold_ind,
+    set_random_seed,
+    dict_res_summary,
 )
+from gnnfree.utils.graph import construct_graph_from_edges
 
-pos_node_num = 5
-rep = 1
-emb_dim = 16
+from model import PlainLabelGNN
 
-num_classes = 2
+from lightning_models import GraphRandLabelCls
 
-gnn = HomogeneousGNN(4, 2, emb_dim, batch_norm=True)
-
-graph_encoder = GraphEncoder(emb_dim, gnn)
-
-classifier = MLPLayers(1, [graph_encoder.get_out_dim(), num_classes])
-
-graph_predictor = Predictor(graph_encoder, classifier).to(device)
+from utils import setup_exp
 
 
-loss = MultiClassLoss()
-evlter = BinaryAccEvaluator("acc")
+def main(params):
+    setup_exp(params)
+
+    # -------------------------- Data Preparation --------------------|
+    graphs, label = load_exp_dataset("./exp/GRAPHSAT.txt")
+    params.inp_dim = 2
+    params.num_class = 2
+
+    folds = k_fold_ind(label, fold=5)
+    splits = k_fold2_split(folds, len(label))
+    s = splits[0]
+
+    train = GraphLabelDataset(
+        [graphs[i] for i in s[0]], [label[i] for i in s[0]]
+    )
+    test = GraphLabelDataset(
+        [graphs[i] for i in s[1]], [label[i] for i in s[1]]
+    )
+    val = GraphLabelDataset(
+        [graphs[i] for i in s[2]], [label[i] for i in s[2]]
+    )
+
+    # ----------------------------- Data Preparation End -------------|
+    params.rep = 1
+
+    task_gnn = PyGGIN(
+        params.num_layers,
+        params.num_piece + params.inp_dim,
+        params.emb_dim,
+        batch_norm=True,
+    )
+    graph_encoder = PlainLabelGNN(params.emb_dim, task_gnn)
+
+    classifier = MLPLayers(
+        3,
+        [graph_encoder.get_out_dim(), 512, 512, params.num_class],
+        batch_norm=True,
+    )
+
+    loss = MultiClassLoss()
+    evlter = BinaryAccEvaluator("acc")
+
+    eval_metric = "acc"
+
+    graph_pred = GraphRandLabelCls(
+        params.exp_dir,
+        {"train": train, "test": test, "val": val},
+        params,
+        task_gnn,
+        graph_encoder,
+        classifier,
+        params.num_piece,
+        loss,
+        evlter,
+    )
+
+    trainer = Trainer(
+        accelerator="auto",
+        devices=1 if torch.cuda.is_available() else None,
+        max_epochs=params.num_epochs,
+        callbacks=[
+            TQDMProgressBar(refresh_rate=20),
+            ModelCheckpoint(monitor=eval_metric, mode="max"),
+        ],
+        logger=CSVLogger(save_dir=params.exp_dir),
+    )
+    trainer.fit(graph_pred)
+    # trainer.test()
+    # params.rep = 3
+
+    test_col = []
+    for i in range(10):
+        test_col.append(trainer.test()[0])
+
+    print(
+        np.mean(dict_res_summary(test_col)[eval_metric]),
+        np.std(dict_res_summary(test_col)[eval_metric]),
+    )
+
+    # graphs = []
+    # label = []
+    # r_label = []
+    # res = []
+    # for j in ind:
+    #     g = nx_graphs[j]
+    #     edges = np.array(list(g.edges))
+    #     for i in range(25):
+    #         for k in range(25):
+    #             g = construct_graph_from_edges(
+    #                 edges[:, 0], edges[:, 1], n_entities=25, inverse_edge=True
+    #             )
+    #             g.ndata["feat"] = torch.ones((25, 1))
+    #             graphs.append(g.to(graph_pred.device))
+    #             label.append(j)
+    #             r_label.append(
+    #                 torch.tensor([[i, k]], dtype=torch.long).to(
+    #                     graph_pred.device
+    #                 )
+    #             )
+    # graph_pred.eval()
+    # for i in range(int(len(graphs) / params.batch_size) + 1):
+    #     g = dgl.batch(
+    #         graphs[i * params.batch_size : (i + 1) * params.batch_size]
+    #     )
+    #     lbs = torch.cat(
+    #         r_label[i * params.batch_size : (i + 1) * params.batch_size], dim=0
+    #     )
+    #     res.append(graph_pred.model(g, lbs, None))
+    # scores = torch.cat(res, dim=0).detach().cpu().numpy()
+    # scores = scores.reshape(params.num_class, 25, 25, params.num_class)
+    # for i in range(params.num_class):
+    #     mat = scores[i]
+    #     res = np.argmax(mat, axis=-1)
+    #     val = np.bincount(res.flatten(), minlength=15)
+    #     print(i, val, val[i])
 
 
-folds = k_fold_ind(label, fold=5)
-splits = k_fold2_split(folds, len(label))
-s = splits[0]
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="gnn")
 
+    parser.add_argument("--data_path", type=str, default="./data")
+    parser.add_argument("--train_data_set", type=str, default="srg")
 
-train = GraphLabelDataset([graphs[i] for i in s[0]], [label[i] for i in s[0]])
-test = GraphLabelDataset([graphs[i] for i in s[1]], [label[i] for i in s[1]])
-val = GraphLabelDataset([graphs[i] for i in s[2]], [label[i] for i in s[2]])
+    parser.add_argument("--emb_dim", type=int, default=512)
+    parser.add_argument("--mol_emb_dim", type=int, default=32)
+    parser.add_argument("--num_layers", type=int, default=4)
+    parser.add_argument("--JK", type=str, default="last")
+    parser.add_argument("--hidden_dim", type=int, default=32)
 
-# data = GraphLabelDataset(graphs, label)
+    parser.add_argument("--num_piece", type=int, default=2)
 
+    parser.add_argument("--dropout", type=float, default=0)
 
-optimizer = torch.optim.Adam(graph_predictor.parameters(), lr=0.001)
-# scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--l2", type=float, default=0)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--eval_batch_size", type=int, default=32)
 
-train_learner = GraphPredictionLearner(
-    "train_gp_learner", train, graph_predictor, 32
-)
-val_learner = GraphPredictionLearner(
-    "val_gp_learner", val, graph_predictor, 32
-)
-test_learner = GraphPredictionLearner(
-    "test_gp_learner", test, graph_predictor, 32
-)
+    parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument("--save_every", type=int, default=1)
 
-manager = Manager()
+    parser.add_argument("--num_epochs", type=int, default=100)
 
-trainer = Trainer(evlter, loss, 8)
+    parser.add_argument("--gpuid", type=int, default=0)
+    parser.add_argument("--fold", type=int, default=10)
 
-manager.train(
-    train_learner,
-    val_learner,
-    trainer,
-    optimizer,
-    "acc",
-    device=device,
-    num_epochs=100,
-)
+    parser.add_argument("--psearch", type=bool, default=False)
 
-manager.load_model(train_learner, optimizer)
-
-val_res = manager.eval(val_learner, trainer, device=device)
-test_res = manager.eval(test_learner, trainer, device=device)
+    params = parser.parse_args()
+    set_random_seed(1)
+    main(params)

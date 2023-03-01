@@ -4,7 +4,7 @@ import torch.nn as nn
 from abc import ABCMeta, abstractmethod
 from torch_scatter import scatter
 
-from torch_geometric.nn.models import MLP
+from gnnfree.nn.models.util_model import MLP
 from gnnfree.utils import count_to_group_index
 
 

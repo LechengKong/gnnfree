@@ -1,6 +1,6 @@
 from gnnfree.nn.models.GNN import MultiLayerMessagePassing
 
-from torch_geometric.nn.models import MLP
+from gnnfree.nn.models.util_model import MLP
 from dgl.nn.pytorch.conv import GINConv, RelGraphConv
 
 
