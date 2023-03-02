@@ -5,7 +5,7 @@ from abc import ABCMeta, abstractmethod
 from torch_scatter import scatter
 
 from gnnfree.nn.models.util_model import MLP
-from gnnfree.utils import count_to_group_index
+from gnnfree.utils.utils import count_to_group_index
 
 
 class Extractor(nn.Module, metaclass=ABCMeta):
