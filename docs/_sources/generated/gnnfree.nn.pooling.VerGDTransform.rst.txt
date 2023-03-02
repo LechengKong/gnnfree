@@ -1,0 +1,75 @@
+﻿gnnfree.nn.pooling.VerGDTransform
+=================================
+
+.. currentmodule:: gnnfree.nn.pooling
+
+.. autoclass:: VerGDTransform
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~VerGDTransform.__init__
+      ~VerGDTransform.add_module
+      ~VerGDTransform.apply
+      ~VerGDTransform.bfloat16
+      ~VerGDTransform.buffers
+      ~VerGDTransform.children
+      ~VerGDTransform.cpu
+      ~VerGDTransform.cuda
+      ~VerGDTransform.double
+      ~VerGDTransform.eval
+      ~VerGDTransform.extra_repr
+      ~VerGDTransform.float
+      ~VerGDTransform.forward
+      ~VerGDTransform.get_buffer
+      ~VerGDTransform.get_extra_state
+      ~VerGDTransform.get_out_dim
+      ~VerGDTransform.get_parameter
+      ~VerGDTransform.get_submodule
+      ~VerGDTransform.get_ver_gd_one_side
+      ~VerGDTransform.half
+      ~VerGDTransform.ipu
+      ~VerGDTransform.load_state_dict
+      ~VerGDTransform.modules
+      ~VerGDTransform.named_buffers
+      ~VerGDTransform.named_children
+      ~VerGDTransform.named_modules
+      ~VerGDTransform.named_parameters
+      ~VerGDTransform.parameters
+      ~VerGDTransform.register_backward_hook
+      ~VerGDTransform.register_buffer
+      ~VerGDTransform.register_forward_hook
+      ~VerGDTransform.register_forward_pre_hook
+      ~VerGDTransform.register_full_backward_hook
+      ~VerGDTransform.register_load_state_dict_post_hook
+      ~VerGDTransform.register_module
+      ~VerGDTransform.register_parameter
+      ~VerGDTransform.requires_grad_
+      ~VerGDTransform.set_extra_state
+      ~VerGDTransform.share_memory
+      ~VerGDTransform.state_dict
+      ~VerGDTransform.to
+      ~VerGDTransform.to_empty
+      ~VerGDTransform.train
+      ~VerGDTransform.type
+      ~VerGDTransform.xpu
+      ~VerGDTransform.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~VerGDTransform.T_destination
+      ~VerGDTransform.dump_patches
+      ~VerGDTransform.training
+   
+   

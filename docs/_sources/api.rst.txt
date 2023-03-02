@@ -6,3 +6,8 @@ API
 
    gnnfree.utils.utils
    gnnfree.utils.graph
+   ~gnnfree.nn.pooling.GDTransform
+   ~gnnfree.nn.pooling.VerGDTransform
+   gnnfree.nn.models.GNN
+
+.. autofunction:: gnnfree.utils.utils.sparse_uniform_sample

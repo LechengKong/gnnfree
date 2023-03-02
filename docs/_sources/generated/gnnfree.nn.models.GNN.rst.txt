@@ -1,0 +1,30 @@
+﻿gnnfree.nn.models.GNN
+=====================
+
+.. automodule:: gnnfree.nn.models.GNN
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      MultiLayerMessagePassing
+      MultiLayerMessagePassingVN
+   
+   
+
+   
+   
+   
+
+
+

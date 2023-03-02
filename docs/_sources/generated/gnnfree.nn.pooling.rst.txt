@@ -1,0 +1,37 @@
+﻿gnnfree.nn.pooling
+==================
+
+.. automodule:: gnnfree.nn.pooling
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      EmbTransform
+      Extractor
+      GDTransform
+      Pooler
+      ReprIndexTransform
+      ReshapeTransform
+      ScatterReprTransform
+      Transform
+      VerGDTransform
+   
+   
+
+   
+   
+   
+
+
+

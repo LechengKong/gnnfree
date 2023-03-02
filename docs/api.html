@@ -47,6 +47,9 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">API</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="generated/gnnfree.utils.utils.html">gnnfree.utils.utils</a></li>
 <li class="toctree-l2"><a class="reference internal" href="generated/gnnfree.utils.graph.html">gnnfree.utils.graph</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/gnnfree.nn.pooling.GDTransform.html">gnnfree.nn.pooling.GDTransform</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/gnnfree.nn.pooling.VerGDTransform.html">gnnfree.nn.pooling.VerGDTransform</a></li>
+<li class="toctree-l2"><a class="reference internal" href="generated/gnnfree.nn.models.GNN.html">gnnfree.nn.models.GNN</a></li>
 </ul>
 </li>
 </ul>
@@ -85,8 +88,37 @@
 <tr class="row-even"><td><p><a class="reference internal" href="generated/gnnfree.utils.graph.html#module-gnnfree.utils.graph" title="gnnfree.utils.graph"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gnnfree.utils.graph</span></code></a></p></td>
 <td><p></p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/gnnfree.nn.pooling.GDTransform.html#gnnfree.nn.pooling.GDTransform" title="gnnfree.nn.pooling.GDTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GDTransform</span></code></a>(emb_dim[, gd_deg])</p></td>
+<td><p>compute node-level GD representation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/gnnfree.nn.pooling.VerGDTransform.html#gnnfree.nn.pooling.VerGDTransform" title="gnnfree.nn.pooling.VerGDTransform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VerGDTransform</span></code></a>(emb_dim[, gd_deg])</p></td>
+<td><p>Vertical GD representation for links</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/gnnfree.nn.models.GNN.html#module-gnnfree.nn.models.GNN" title="gnnfree.nn.models.GNN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gnnfree.nn.models.GNN</span></code></a></p></td>
+<td><p></p></td>
+</tr>
 </tbody>
 </table>
+<dl class="py function">
+<dt class="sig sig-object py" id="gnnfree.utils.utils.sparse_uniform_sample">
+<span class="sig-prename descclassname"><span class="pre">gnnfree.utils.utils.</span></span><span class="sig-name descname"><span class="pre">sparse_uniform_sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#gnnfree.utils.utils.sparse_uniform_sample" title="Permalink to this definition"></a></dt>
+<dd><p>Return a DGL graph specified by edges.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>head</strong> – Edge head.</p></li>
+<li><p><strong>tail</strong> – Edge tail.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DGLGraph.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>DGLGraph</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 

@@ -1,0 +1,74 @@
+﻿gnnfree.nn.pooling.GDTransform
+==============================
+
+.. currentmodule:: gnnfree.nn.pooling
+
+.. autoclass:: GDTransform
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GDTransform.__init__
+      ~GDTransform.add_module
+      ~GDTransform.apply
+      ~GDTransform.bfloat16
+      ~GDTransform.buffers
+      ~GDTransform.children
+      ~GDTransform.cpu
+      ~GDTransform.cuda
+      ~GDTransform.double
+      ~GDTransform.eval
+      ~GDTransform.extra_repr
+      ~GDTransform.float
+      ~GDTransform.forward
+      ~GDTransform.get_buffer
+      ~GDTransform.get_extra_state
+      ~GDTransform.get_out_dim
+      ~GDTransform.get_parameter
+      ~GDTransform.get_submodule
+      ~GDTransform.half
+      ~GDTransform.ipu
+      ~GDTransform.load_state_dict
+      ~GDTransform.modules
+      ~GDTransform.named_buffers
+      ~GDTransform.named_children
+      ~GDTransform.named_modules
+      ~GDTransform.named_parameters
+      ~GDTransform.parameters
+      ~GDTransform.register_backward_hook
+      ~GDTransform.register_buffer
+      ~GDTransform.register_forward_hook
+      ~GDTransform.register_forward_pre_hook
+      ~GDTransform.register_full_backward_hook
+      ~GDTransform.register_load_state_dict_post_hook
+      ~GDTransform.register_module
+      ~GDTransform.register_parameter
+      ~GDTransform.requires_grad_
+      ~GDTransform.set_extra_state
+      ~GDTransform.share_memory
+      ~GDTransform.state_dict
+      ~GDTransform.to
+      ~GDTransform.to_empty
+      ~GDTransform.train
+      ~GDTransform.type
+      ~GDTransform.xpu
+      ~GDTransform.zero_grad
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GDTransform.T_destination
+      ~GDTransform.dump_patches
+      ~GDTransform.training
+   
+   
