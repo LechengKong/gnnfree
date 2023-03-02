@@ -1,0 +1,47 @@
+﻿gnnfree.utils.utils
+===================
+
+.. automodule:: gnnfree.utils.utils
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      count_to_group_index
+      dict_res_summary
+      hyperparameter_grid_search
+      k_fold2_split
+      k_fold_ind
+      multi_data_average_exp
+      save_params
+      set_random_seed
+      sparse_uniform_sample
+      sparse_uniform_select
+      var_size_repeat
+      write_res_to_file
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      SmartTimer
+      SparseData
+   
+   
+
+   
+   
+   
+
+
+
