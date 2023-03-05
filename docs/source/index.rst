@@ -10,21 +10,23 @@ Check out the :doc:`usage` section for further information.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Introduction
+   :hidden:
+   :glob:
 
+   usage
 
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference
+   :hidden:
+   :glob:
+
+   api/gnnfree
+   api/gnnfree.utils
+   api/gnnfree.nn
 
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-Contents
---------
-
-.. toctree::
-
-   usage
-   api

@@ -1,3 +1,5 @@
+"""Base message-passing GNNs
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,6 +14,8 @@ from torch_scatter import scatter
 
 
 class MultiLayerMessagePassing(nn.Module, metaclass=ABCMeta):
+    """Message passing GNN
+    """
     def __init__(
         self,
         num_layers,
@@ -21,6 +25,23 @@ class MultiLayerMessagePassing(nn.Module, metaclass=ABCMeta):
         JK="last",
         batch_norm=True,
     ):
+        """
+
+        :param num_layers: layer number of GNN
+        :type num_layers: int
+        :param inp_dim: input feature dimension
+        :type inp_dim: int
+        :param out_dim: output dimension
+        :type out_dim: int
+        :param drop_ratio: layer-wise node dropout ratio, defaults to None
+        :type drop_ratio: float, optional
+        :param JK: jumping knowledge, should either be ["last","sum"],
+        defaults to "last"
+        :type JK: str, optional
+        :param batch_norm: Use node embedding batch normalization, defaults
+        to True
+        :type batch_norm: bool, optional
+        """
         super().__init__()
         self.num_layers = num_layers
         self.JK = JK

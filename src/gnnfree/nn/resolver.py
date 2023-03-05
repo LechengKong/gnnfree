@@ -1,3 +1,6 @@
+"""Class Resovler for Efficient Typing
+"""
+
 import inspect
 from typing import Any, Dict, List, Optional, Union
 

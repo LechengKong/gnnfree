@@ -116,6 +116,14 @@ def sparse_uniform_select(data, data_count, p=0.5):
 
 
 def sparse_uniform_sample(data, data_count, c=1):
+    """
+    Return a DGL graph specified by edges.
+
+    :param head: Edge head.
+    :param tail: Edge tail.
+    :return: DGLGraph.
+    :rtype: DGLGraph
+    """
     if isinstance(c, int):
         c = np.repeat(c, len(data_count))
         c = (data_count > 0) * c

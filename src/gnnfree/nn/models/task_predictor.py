@@ -1,3 +1,7 @@
+"""Task specific predictor. Use GNN to generate node embedding
+and produce task specific predictions.
+"""
+
 import torch
 import torch.nn as nn
 import dgl
@@ -7,6 +11,9 @@ from gnnfree.nn.pooling import ReprIndexTransform
 
 
 class BaseGNNEncoder(nn.Module, metaclass=ABCMeta):
+    """Takes in a GNN as memeber variable. Implements forward
+    and get_out_dim.
+    """
     def __init__(self, gnn):
         super().__init__()
 

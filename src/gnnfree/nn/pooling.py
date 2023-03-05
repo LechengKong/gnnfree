@@ -1,3 +1,6 @@
+"""Neural Network pooling and Transformaation functions
+"""
+
 import torch
 import torch.nn as nn
 
